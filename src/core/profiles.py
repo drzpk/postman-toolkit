@@ -1,4 +1,5 @@
 import os
+from typing import List, Dict
 
 from .parser import Parser
 
@@ -26,17 +27,17 @@ class Profile:
 
 
 class ProfiledConfiguration:
-    profiles: [Profile] = []
+    profiles: List[Profile] = []
     """
     List of active profiles
     """
 
-    config_entries: [ProfileConfigEntry] = []
+    config_list: List[ProfileConfigEntry] = []
     """
     Current configuration as objects
     """
 
-    config = {}
+    config_dict: Dict[str, ProfileConfigEntry] = {}
     """
     Current configuration as dictionary
     """
@@ -94,8 +95,8 @@ class ProfileConfigLoader:
                 configuration.profiles.append(profile)
 
         # Append active config entries to profiled configuration
-        configuration.config_entries = [v for v in active_config_entries.values()]
-        configuration.config = {k: v.value for k, v in active_config_entries.items()}
+        configuration.config_list = [v for v in active_config_entries.values()]
+        configuration.config_dict = active_config_entries
 
         return configuration
 

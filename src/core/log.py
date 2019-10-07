@@ -1,4 +1,5 @@
 class Log:
+    debug = False
 
     @staticmethod
     def i(msg: str):
@@ -6,5 +7,5 @@ class Log:
 
     @staticmethod
     def d(msg: str):
-        # TODO: debug mode
-        print("[d] %s" % msg)
+        if Log.debug:
+            print("[d] %s" % msg)

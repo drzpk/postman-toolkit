@@ -1,4 +1,4 @@
-from src import toolkit
+from src.core.toolkit import PostmanToolkit
 
 if __name__ == "__main__":
-    toolkit.PostmanToolkit.start()
+    PostmanToolkit.start()

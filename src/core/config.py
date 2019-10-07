@@ -17,11 +17,13 @@ class ConfigEntry:
 
 
 class ConfigProperty(Enum):
-    TEST_PROPERTY = ConfigEntry("test value", "test comment")
+    SERVER_HOST = ConfigEntry("localhost", "Hostname or IP address to listen on")
+    SERVER_PORT = ConfigEntry("8881", "Port to listen on")
+    DEBUG = ConfigEntry("", "Whether debug mode is active, non empty value means 'yes'")
     ACTIVE_PROFILES = ConfigEntry("default", "List of active profiles")
 
-    def get_value(self):
-        return config_instance[self.name]
+    def get_value(self) -> str:
+        return config_instance[self.name] if self.name in config_instance else None
 
 
 class Configuration:
@@ -31,7 +33,7 @@ class Configuration:
     @staticmethod
     def initialize():
         current_dir = os.path.dirname(os.path.realpath(__file__))
-        root_dir = os.path.normpath(current_dir + "/../")
+        root_dir = os.path.normpath(current_dir + "/../../")
 
         Configuration.config_dir = os.path.normpath(root_dir + "/config")
         if not os.path.isdir(Configuration.config_dir):
@@ -66,5 +68,6 @@ class Configuration:
         # Add missing properties to config file
         f = open(config_file, "a")
         for m in missing:
+            config[m.name] = m.value.default
             f.write("\n# %s\n%s=%s" % (m.value.comment, m.name, m.value.default))
         f.close()
