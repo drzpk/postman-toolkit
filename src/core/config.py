@@ -18,14 +18,15 @@ class ConfigEntry:
 
 class ConfigProperty(Enum):
     TEST_PROPERTY = ConfigEntry("test value", "test comment")
+    ACTIVE_PROFILES = ConfigEntry("default", "List of active profiles")
 
-    def get(self):
+    def get_value(self):
         return config_instance[self.name]
 
 
 class Configuration:
     config_dir = None
-    data_dir = None
+    profiles_dir = None
 
     @staticmethod
     def initialize():
@@ -36,9 +37,9 @@ class Configuration:
         if not os.path.isdir(Configuration.config_dir):
             os.mkdir(Configuration.config_dir)
 
-        Configuration.data_dir = os.path.normpath(Configuration.config_dir + "/data")
-        if not os.path.isdir(Configuration.data_dir):
-            os.mkdir(Configuration.data_dir)
+        Configuration.profiles_dir = os.path.normpath(Configuration.config_dir + "/profiles")
+        if not os.path.isdir(Configuration.profiles_dir):
+            os.mkdir(Configuration.profiles_dir)
 
         Configuration._load_app_config()
 

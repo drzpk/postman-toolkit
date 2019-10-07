@@ -17,7 +17,7 @@ class Parser:
                     d[r[0]] = r[1]
                 n += 1
             except SyntaxError as e:
-                raise SyntaxError("Error in line " + str(n), e)
+                raise SyntaxError("Error in line " + str(n)) from e
 
         return d
 
@@ -29,7 +29,7 @@ class Parser:
 
     @staticmethod
     def deserialize_property(line: str):
-        if line.strip().startswith("#"):
+        if line.strip().startswith("#") or len(line.strip()) == 0:
             return None
 
         comment = line.find("#")
@@ -42,6 +42,6 @@ class Parser:
             raise SyntaxError("Missing equals sign")
 
         name = prop[0:separator].strip()
-        value = prop[separator + 1:]
+        value = prop[separator + 1:].replace("\r\n", "").replace("\n", "")
 
         return [name, value]
