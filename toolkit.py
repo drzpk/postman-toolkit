@@ -1,4 +1,4 @@
-from src.core.toolkit import PostmanToolkit
+from src.web.web import *
 
-if __name__ == "__main__":
-    PostmanToolkit.start()
+
+run_web()

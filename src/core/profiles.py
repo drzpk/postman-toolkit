@@ -1,6 +1,7 @@
 import os
 from typing import List, Dict
 
+from .config import Configuration, ConfigProperty
 from .parser import Parser
 
 
@@ -42,6 +43,12 @@ class ProfiledConfiguration:
     Current configuration as dictionary
     """
 
+    def reload(self):
+        updated = ProfileConfigLoader.load()
+        self.profiles = updated.profiles
+        self.config_list = updated.config_list
+        self.config_dict = updated.config_dict
+
 
 class ProfileConfigLoader:
     profiles_dir = ""
@@ -54,7 +61,13 @@ class ProfileConfigLoader:
         self.profiles_dir = profiles_dir
         self.active_profiles = active_profiles
 
-    def load(self) -> ProfiledConfiguration:
+    @staticmethod
+    def load():
+        active_profiles = ConfigProperty.ACTIVE_PROFILES.get_value().split(",")
+        loader = ProfileConfigLoader(Configuration.profiles_dir, active_profiles)
+        return loader._load()
+
+    def _load(self) -> ProfiledConfiguration:
         dir_list = [self.profiles_dir]
         # (profile: properties dit)
         mapping = {}
@@ -74,6 +87,7 @@ class ProfileConfigLoader:
 
         return self._deflate_config(mapping)
 
+    # noinspection PyShadowingNames
     def _deflate_config(self, mapping) -> ProfiledConfiguration:
         configuration = ProfiledConfiguration()
         active_config_entries = {}
