@@ -20,7 +20,6 @@ class ConfigProperty(Enum):
     SERVER_HOST = ConfigEntry("localhost", "Hostname or IP address to listen on")
     SERVER_PORT = ConfigEntry("8881", "Port to listen on")
     DEBUG = ConfigEntry("", "Whether debug mode is active, non empty value means 'yes'")
-    ACTIVE_PROFILES = ConfigEntry("default", "List of active profiles")
 
     def get_value(self) -> str:
         return config_instance[self.name] if self.name in config_instance else None

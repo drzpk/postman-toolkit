@@ -1,8 +1,10 @@
 import os
 from typing import List, Dict
 
-from .config import Configuration, ConfigProperty
+from .config import Configuration
+from .log import Log
 from .parser import Parser
+from .profiles_order import ProfilesOrder
 
 
 class ProfileConfigEntry:
@@ -14,62 +16,90 @@ class ProfileConfigEntry:
     name = ""
     value = ""
 
+    @property
+    def is_active(self):
+        return self.profile.active
+
 
 class Profile:
     name = ""
+    active = False
 
-    config_entries: ProfileConfigEntry = []
+    config_entries: List[ProfileConfigEntry] = []
     """
     Config entries for current profile (profile overriding applies)
     """
 
-    def __init__(self, name):
+    def __init__(self, name, active):
         self.name = name
+        self.active = active
 
 
 class ProfiledConfiguration:
-    profiles: List[Profile] = []
-    """
-    List of active profiles
-    """
+    _profiles: Dict[str, Profile] = {}
+    _config_list: List[ProfileConfigEntry] = []
+    _config_dict: Dict[str, ProfileConfigEntry] = {}
 
-    config_list: List[ProfileConfigEntry] = []
-    """
-    Current configuration as objects
-    """
+    _profiles_order: ProfilesOrder = None
 
-    config_dict: Dict[str, ProfileConfigEntry] = {}
-    """
-    Current configuration as dictionary
-    """
+    def profiles(self, active_only=True):
+        """
+        List of (active) profiles
+        """
+        if not active_only:
+            return self._profiles
+
+        return {k: v for k, v in self._profiles if v.active}
+
+    def config_list(self, active_only=True):
+        """
+        Current configuration as objects
+        """
+        if not active_only:
+            return self._config_list
+
+        return [c for c in self._config_list if c.is_active()]
+
+    def config_dict(self, active_only=True):
+        """
+        Current configuration as dictionary
+        """
+        if not active_only:
+            return self._config_dict
+
+        return {k: v for k, v in self._config_dict if v.is_active()}
 
     def reload(self):
-        updated = ProfileConfigLoader.load()
-        self.profiles = updated.profiles
-        self.config_list = updated.config_list
-        self.config_dict = updated.config_dict
+        Log.i("Reloading profiled configuration")
+        self._profiles_order.reload()
+        updated = ProfileConfigLoader.load(self._profiles_order)
+
+        self._profiles = updated._profiles
+        self._config_list = updated._config_list
+        self._config_dict = updated._config_dict
 
 
 class ProfileConfigLoader:
     profiles_dir = ""
-    active_profiles = []
+    profiles_order: ProfilesOrder = []
 
-    def __init__(self, profiles_dir, active_profiles):
+    def __init__(self, profiles_dir, profiles_order: ProfilesOrder):
         if not os.path.isdir(profiles_dir):
             raise FileNotFoundError("profiles directory doesn't exist")
 
         self.profiles_dir = profiles_dir
-        self.active_profiles = active_profiles
+        self.profiles_order = profiles_order
 
     @staticmethod
-    def load():
-        active_profiles = ConfigProperty.ACTIVE_PROFILES.get_value().split(",")
-        loader = ProfileConfigLoader(Configuration.profiles_dir, active_profiles)
+    def load(profiles_order: ProfilesOrder):
+        loader = ProfileConfigLoader(Configuration.profiles_dir, profiles_order)
+
+        # TODO: generate warnings about files from /profiles directory that aren't listed on profile list
         return loader._load()
 
     def _load(self) -> ProfiledConfiguration:
         dir_list = [self.profiles_dir]
-        # (profile: properties dit)
+        # (profile: properties dir)
         mapping = {}
 
         while len(dir_list) > 0:
@@ -80,7 +110,7 @@ class ProfileConfigLoader:
                 dir_list.append(d)
 
             for p, v in result["profiles"].items():
-                # Config values from profiles defines in subdirectories will override existing values
+                # Config values from profiles defined in subdirectories will override existing values
                 if p not in mapping:
                     mapping[p] = {}
                 mapping[p].update(v)
@@ -90,32 +120,36 @@ class ProfileConfigLoader:
     # noinspection PyShadowingNames
     def _deflate_config(self, mapping) -> ProfiledConfiguration:
         configuration = ProfiledConfiguration()
-        active_config_entries = {}
+        configuration._profiles_order = self.profiles_order
 
-        for p_name in self.active_profiles:
-            profile = Profile(p_name)
+        profiles = {}
+        config_entries = {}
 
-            if p_name in mapping:
-                for k, v in mapping[p_name].items():
+        for a_profile in self.profiles_order.entries:
+            profile = Profile(a_profile.name, a_profile.active)
+
+            if a_profile.name in mapping:
+                for k, v in mapping[a_profile.name].items():
                     entry = ProfileConfigEntry()
                     entry.profile = profile
                     entry.name = k
                     entry.value = v
 
-                    if k in active_config_entries:
-                        entry.parent = active_config_entries[k]
-                    active_config_entries[k] = entry
+                    if k in config_entries:
+                        entry.parent = config_entries[k]
+                    config_entries[k] = entry
+                    profile.config_entries.append(entry)
 
-                configuration.profiles.append(profile)
+            profiles[a_profile.name] = profile
 
         # Append active config entries to profiled configuration
-        configuration.config_list = [v for v in active_config_entries.values()]
-        configuration.config_dict = active_config_entries
+        configuration._profiles = profiles
+        configuration._config_list = [v for v in config_entries.values()]
+        configuration._config_dict = config_entries
 
         return configuration
 
     def _load_dir(self, _dir):
-
         ret = {
             "dirs": [],
             "profiles": {}

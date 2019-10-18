@@ -1,5 +1,8 @@
+import os
+
 from .config import Configuration, ConfigProperty
 from .profiles import ProfileConfigLoader, ProfiledConfiguration
+from .profiles_order import ProfilesOrder
 from .log import Log
 
 VERSION = "1.0"
@@ -19,10 +22,11 @@ class PostmanToolkit:
         debug = _d is not None and len(_d) > 0
         Log.debug = debug
 
-        self.profiled_configuration = ProfileConfigLoader.load()
+        profiles_order = ProfilesOrder(os.path.normpath(Configuration.config_dir + "/profiles_order"))
+        self.profiled_configuration = ProfileConfigLoader.load(profiles_order)
 
         print("loaded configuration:")
-        for c in self.profiled_configuration.config_list:
+        for c in self.profiled_configuration.config_list():
             print("%s: %s" % (c.name, c.value), end="")
             p = c.parent
             while p is not None:
