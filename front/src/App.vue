@@ -26,8 +26,18 @@
   }
 </script>
 
+<!--suppress CssUnusedSymbol -->
 <style>
+  @import "../node_modules/@fortawesome/fontawesome-free/css/all.css";
   #app {
 
+  }
+
+  .size-medium {
+    font-size: 1.3em;
+  }
+
+  .cursor-pointer {
+    cursor: pointer;
   }
 </style>
