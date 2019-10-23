@@ -11,10 +11,12 @@
 
           {{profile.name}}
           <span style="float: right">
+            <!--suppress JSUnresolvedVariable -->
             <i class="fas fa-caret-square-up size-medium cursor-pointer"
-               @click="moveUp(profile)" :class="{'disabled': index === 0}"></i>
+               @click="moveUp(profile, $event)" :class="{'disabled': index === 0}"></i>
+            <!--suppress JSUnresolvedVariable -->
             <i class="fas fa-caret-square-down size-medium cursor-pointer"
-               @click="moveDown(profile)" :class="{'disabled': index + 1 === profiles.length}"></i>
+               @click="moveDown(profile, $event)" :class="{'disabled': index + 1 === profiles.length}"></i>
          </span>
 
         </li>
@@ -58,7 +60,9 @@
       },
 
       // Make profile more important
-      moveUp(profile) {
+      moveUp(profile, event) {
+        event.stopPropagation();
+
         const index = this.profiles.indexOf(profile);
         if (index > -1 && index + 1 < this.profiles.length && this.profiles.length > 1) {
           const tmp = this.profiles[index];
@@ -68,7 +72,9 @@
       },
 
       // Make profile less important
-      moveDown(profile) {
+      moveDown(profile, event) {
+        event.stopPropagation();
+
         const index = this.profiles.indexOf(profile);
         if (index > -1 && index > 0 && this.profiles.length > 1) {
           const tmp = this.profiles[index];
@@ -87,7 +93,8 @@
   }
 
   .list-group-item {
-    transition: background-color 0.1s linear;
+    /* breaks profile swap animation */
+    /*transition: background-color 0.1s linear;*/
   }
 
   .list-group-item i.disabled {

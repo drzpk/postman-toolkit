@@ -19,6 +19,11 @@ function getProfiles() {
   return wrapResponse(axios.get(BASE_PATH + '/profiles'));
 }
 
+function getProfileProperties(profileName) {
+  return wrapResponse(axios.get(BASE_PATH + '/profiles/' + profileName + '/config'));
+}
+
 export default {
-  getProfiles
+  getProfiles,
+  getProfileProperties
 }

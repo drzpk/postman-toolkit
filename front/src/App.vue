@@ -16,6 +16,8 @@
 </template>
 
 <script>
+  // TODO: settings page: adding prefix to each property imported to Postman
+  // TODO: settings page: updating properties changed in Postman
   import Navigation from '@/components/Navigation';
 
   export default {
