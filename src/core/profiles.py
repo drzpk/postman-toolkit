@@ -4,7 +4,7 @@ from typing import List, Dict
 from .config import Configuration
 from .log import Log
 from .parser import Parser
-from .profiles_order import ProfilesOrder
+from .profiles_order import ProfilesOrder, ProfileEntry
 
 
 class ProfileConfigEntry:
@@ -25,14 +25,14 @@ class Profile:
     name = ""
     active = False
 
-    config_entries: List[ProfileConfigEntry] = []
+    config_entries: List[ProfileConfigEntry] = None
     """
     Config entries for current profile (profile overriding applies)
     """
 
-    def __init__(self, name, active):
+    def __init__(self, name):
         self.name = name
-        self.active = active
+        self.config_entries = []
 
 
 class ProfiledConfiguration:
@@ -94,7 +94,6 @@ class ProfileConfigLoader:
     def load(profiles_order: ProfilesOrder):
         loader = ProfileConfigLoader(Configuration.profiles_dir, profiles_order)
 
-        # TODO: generate warnings about files from /profiles directory that aren't listed on profile list
         return loader._load()
 
     def _load(self) -> ProfiledConfiguration:
@@ -115,39 +114,73 @@ class ProfileConfigLoader:
                     mapping[p] = {}
                 mapping[p].update(v)
 
-        return self._deflate_config(mapping)
+        return self._inflate_config(mapping)
 
     # noinspection PyShadowingNames
-    def _deflate_config(self, mapping) -> ProfiledConfiguration:
+    def _inflate_config(self, mapping) -> ProfiledConfiguration:
         configuration = ProfiledConfiguration()
         configuration._profiles_order = self.profiles_order
 
-        profiles = {}
-        config_entries = {}
+        # Load all profiles from from the directory
+        raw_profiles = {}
+        for p_name, profile_properties in mapping.items():
+            profile = Profile(p_name)
+            for k, v in profile_properties.items():
+                entry = ProfileConfigEntry()
+                entry.profile = profile
+                entry.name = k
+                entry.value = v
+                profile.config_entries.append(entry)
+            raw_profiles[p_name] = profile
 
-        for a_profile in self.profiles_order.entries:
-            profile = Profile(a_profile.name, a_profile.active)
+        profiles_order_dirty = False
 
-            if a_profile.name in mapping:
-                for k, v in mapping[a_profile.name].items():
-                    entry = ProfileConfigEntry()
-                    entry.profile = profile
-                    entry.name = k
-                    entry.value = v
+        # Determine the order
+        ordered_profiles = []
+        entries_to_delete = []
+        for entry in self.profiles_order.entries:
+            if entry.name not in raw_profiles:
+                Log.i("Profile file for profile {} wasn't found, deleting profile from list".format(entry.name))
+                entries_to_delete.append(entry)
+                profiles_order_dirty = True
+            else:
+                profile = raw_profiles.pop(entry.name)
+                profile.active = entry.active
+                ordered_profiles.append(profile)
 
-                    if k in config_entries:
-                        entry.parent = config_entries[k]
-                    config_entries[k] = entry
-                    profile.config_entries.append(entry)
+        for to_delete in entries_to_delete:
+            self.profiles_order.entries.remove(to_delete)
+            Log.d("Deleted profile {} from entry list".format(to_delete.name))
 
-            profiles[a_profile.name] = profile
+        # Add unlisted profiles to profile list
+        for new_profile in raw_profiles.values():
+            profiles_order_dirty = True
+            new_profile.active = False
+            entry = ProfileEntry(new_profile.name, False)
+            self.profiles_order.entries = [entry] + self.profiles_order.entries
+            Log.d("Added new inactive profile {} to order list".format(new_profile.name))
 
-        # Append active config entries to profiled configuration
-        configuration._profiles = profiles
-        configuration._config_list = [v for v in config_entries.values()]
-        configuration._config_dict = config_entries
+        if profiles_order_dirty:
+            self.profiles_order.save()
 
+        configuration._profiles = {p.name: p for p in ordered_profiles}
+        self._rebuild_hierarchy(configuration)
         return configuration
+
+    @staticmethod
+    def _rebuild_hierarchy(configuration):
+        hierarchy = {}
+        for profile in configuration.profiles(False).values():
+            for prop in profile.config_entries:
+                if prop.name in hierarchy:
+                    old = hierarchy[prop.name]
+                    prop.parent = old
+                    hierarchy[prop.name] = prop
+                else:
+                    prop.parent = None
+
+        configuration._config_dict = hierarchy
+        configuration._config_list = [v for v in hierarchy.values()]
 
     def _load_dir(self, _dir):
         ret = {
@@ -167,9 +200,12 @@ class ProfileConfigLoader:
                         name = self.get_profile_name(entry.name)
                         ret["profiles"][name] = data
                     except Exception as e:
+                        # todo: recover from such errors
                         raise Exception("Error while parsing file " + entry.path) from e
                 else:
-                    ret["dirs"].append(entry.path)
+                    pass
+                    # todo: need to rethink this behavior
+                    # ret["dirs"].append(entry.path)
 
         return ret
 
