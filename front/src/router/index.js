@@ -8,6 +8,7 @@ import 'bootstrap-vue/dist/bootstrap-vue.css'
 
 import Home from '@/components/Home';
 import Profiles from '@/components/Profiles';
+import Properties from '@/components/Properties';
 
 
 Vue.use(Router);
@@ -24,6 +25,11 @@ export default new Router({
       path: '/profiles',
       name: 'Profiles',
       component: Profiles
+    },
+    {
+      path: '/properties',
+      name: 'Properties',
+      component: Properties
     }
   ]
 })

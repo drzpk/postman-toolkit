@@ -8,15 +8,32 @@ class WebFacade:
     def __init__(self, profiled_configuration):
         self.config = profiled_configuration
 
-    # todo: optionally return overridden values
     def get_config(self, name):
-        if name not in self.config.config_dict:
+        config = self.config.config_dict()
+        if name not in config:
             return None
 
-        e = self.config.config_dict()[name]
-        return {
+        e = config[name]
+        ancestors = []
+        p = e.parent
+        while p is not None:
+            ancestors.append({
+                "name": p.name,
+                "value": p.value,
+                "profile": p.profile.name,
+                "active": e.is_active
+            })
+            p = p.parent
+
+        content = {
             "name": e.name,
-            "value": e.value
+            "value": e.value,
+            "profile": e.profile.name,
+            "active": e.is_active,
+            "ancestors": ancestors
+        }
+        return {
+            "content": content
         }
 
     def list_config(self, active_only, profile_name=None):

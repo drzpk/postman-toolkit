@@ -58,7 +58,7 @@ class ProfiledConfiguration:
         if not active_only:
             return self._config_list
 
-        return [c for c in self._config_list if c.is_active()]
+        return [c for c in self._config_list if c.is_active]
 
     def config_dict(self, active_only=True):
         """
@@ -67,7 +67,7 @@ class ProfiledConfiguration:
         if not active_only:
             return self._config_dict
 
-        return {k: v for k, v in self._config_dict if v.is_active()}
+        return {k: v for k, v in self._config_dict.items() if v.is_active}
 
     def reload(self):
         Log.i("Reloading profiled configuration")
@@ -175,9 +175,9 @@ class ProfileConfigLoader:
                 if prop.name in hierarchy:
                     old = hierarchy[prop.name]
                     prop.parent = old
-                    hierarchy[prop.name] = prop
                 else:
                     prop.parent = None
+                hierarchy[prop.name] = prop
 
         configuration._config_dict = hierarchy
         configuration._config_list = [v for v in hierarchy.values()]
