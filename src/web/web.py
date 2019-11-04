@@ -50,6 +50,29 @@ def list_profile_config(name):
         return make_response(config_list)
 
 
+@app.route("/profiles/<profile_name>/config/<name>", methods=["POST"])
+def update_profile_config(profile_name, name):
+    body = request.json
+    if body is None or "value" not in body or body["value"] is None:
+        return make_response("New value not specified", 422)
+
+    if not facade.update_config(profile_name, name, body["value"]):
+        if "create" in body and body["create"] is True:
+            facade.create_config(profile_name, name, body["value"])
+            return make_response("", 201)
+        else:
+            return make_response("", 404)
+
+    return make_response("")
+
+
+@app.route("/profiles/<profile_name>/config/<name>", methods=["DELETE"])
+def delete_profile_config(profile_name, name):
+    if facade.delete_config(profile_name, name):
+        return make_response("", 204)
+    return make_response("", 404)
+
+
 @app.after_request
 def after_request(response):
     if app.debug:

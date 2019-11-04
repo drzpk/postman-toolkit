@@ -26,7 +26,7 @@ class PostmanToolkit:
         self.profiled_configuration = ProfileConfigLoader.load(profiles_order)
 
         print("loaded configuration:")
-        for c in self.profiled_configuration.config_list():
+        for c in self.profiled_configuration.config().values():
             print("%s: %s" % (c.name, c.value), end="")
             p = c.parent
             while p is not None:

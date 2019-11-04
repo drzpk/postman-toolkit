@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict
+from typing import Dict
 
 from .config import Configuration
 from .log import Log
@@ -8,66 +8,126 @@ from .profiles_order import ProfilesOrder, ProfileEntry
 
 
 class ProfileConfigEntry:
-    parent = None
+    _parent = None
     """
     Previous ProfileConfigEntry this one overrides
     """
-    profile = None
-    name = ""
-    value = ""
+    _profile = None
+    _name = ""
+    _value = ""
+
+    dirty = False
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @parent.setter
+    def parent(self, parent):
+        self._parent = parent
+        self.dirty = True
+
+    @property
+    def profile(self):
+        return self._profile
+
+    @profile.setter
+    def profile(self, profile):
+        self._profile = profile
+        self.dirty = True
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = name
+        self.dirty = True
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = value
+        self.dirty = True
 
     @property
     def is_active(self):
-        return self.profile.active
+        return self._profile.active
 
 
 class Profile:
-    name = ""
-    active = False
+    _name = ""
+    _active = False
 
-    config_entries: List[ProfileConfigEntry] = None
+    config_entries: Dict[str, ProfileConfigEntry] = None
     """
-    Config entries for current profile (profile overriding applies)
+    Config entries defined for this profile only
     """
+
+    profiled_configuration = None
+    dirty = False
 
     def __init__(self, name):
         self.name = name
-        self.config_entries = []
+        self.config_entries = {}
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = name
+        self.dirty = True
+
+    @property
+    def active(self):
+        return self._active
+
+    @active.setter
+    def active(self, active):
+        self._active = active
+        self.dirty = True
+
+    def add_entry(self, name, value):
+        if name in self.config_entries:
+            raise Exception("Config entry {} already exists in profile {}".format(name, self.name))
+        entry = ProfileConfigEntry()
+        entry.name = name
+        entry.value = value
+        entry.profile = self
+        entry.dirty = True
+        self.config_entries[name] = entry
+        self.profiled_configuration.reorder()
+
+    def delete_entry(self, name):
+        if name not in self.config_entries:
+            raise Exception("config entry {} doesn't exist in profile {}".format(name, self.name))
+        del self.config_entries[name]
+        self.profiled_configuration.reorder()
 
 
 class ProfiledConfiguration:
-    _profiles: Dict[str, Profile] = {}
-    _config_list: List[ProfileConfigEntry] = []
-    _config_dict: Dict[str, ProfileConfigEntry] = {}
-
+    _profiles: Dict[str, Profile] = None
+    _config: Dict[str, ProfileConfigEntry] = None
     _profiles_order: ProfilesOrder = None
 
-    def profiles(self, active_only=True):
-        """
-        List of (active) profiles
-        """
-        if not active_only:
-            return self._profiles
+    config_dir: str = None
 
-        return {k: v for k, v in self._profiles if v.active}
+    def __init__(self, config_dir):
+        self._profiles = {}
+        self._config = {}
+        self.config_dir = config_dir
 
-    def config_list(self, active_only=True):
-        """
-        Current configuration as objects
-        """
-        if not active_only:
-            return self._config_list
+    def profiles(self):
+        return self._profiles
 
-        return [c for c in self._config_list if c.is_active]
-
-    def config_dict(self, active_only=True):
-        """
-        Current configuration as dictionary
-        """
-        if not active_only:
-            return self._config_dict
-
-        return {k: v for k, v in self._config_dict.items() if v.is_active}
+    def config(self):
+        return self._config
 
     def reload(self):
         Log.i("Reloading profiled configuration")
@@ -75,8 +135,13 @@ class ProfiledConfiguration:
         updated = ProfileConfigLoader.load(self._profiles_order)
 
         self._profiles = updated._profiles
-        self._config_list = updated._config_list
-        self._config_dict = updated._config_dict
+        self._config = updated._config
+
+    def reorder(self):
+        ProfileConfigLoader.rebuild_hierarchy(self)
+
+    def save(self):
+        ProfileConfigWriter.write(self)
 
 
 class ProfileConfigLoader:
@@ -118,19 +183,20 @@ class ProfileConfigLoader:
 
     # noinspection PyShadowingNames
     def _inflate_config(self, mapping) -> ProfiledConfiguration:
-        configuration = ProfiledConfiguration()
+        configuration = ProfiledConfiguration(self.profiles_dir)
         configuration._profiles_order = self.profiles_order
 
         # Load all profiles from from the directory
         raw_profiles = {}
         for p_name, profile_properties in mapping.items():
             profile = Profile(p_name)
+            profile.profiled_configuration = configuration
             for k, v in profile_properties.items():
                 entry = ProfileConfigEntry()
                 entry.profile = profile
                 entry.name = k
                 entry.value = v
-                profile.config_entries.append(entry)
+                profile.config_entries[k] = entry
             raw_profiles[p_name] = profile
 
         profiles_order_dirty = False
@@ -164,14 +230,16 @@ class ProfileConfigLoader:
             self.profiles_order.save()
 
         configuration._profiles = {p.name: p for p in ordered_profiles}
-        self._rebuild_hierarchy(configuration)
+        self.rebuild_hierarchy(configuration)
         return configuration
 
     @staticmethod
-    def _rebuild_hierarchy(configuration):
+    def rebuild_hierarchy(configuration):
         hierarchy = {}
-        for profile in configuration.profiles(False).values():
-            for prop in profile.config_entries:
+        for profile in configuration.profiles().values():
+            profile.dirty = False
+            for prop in profile.config_entries.values():
+                prop.dirty = False
                 if prop.name in hierarchy:
                     old = hierarchy[prop.name]
                     prop.parent = old
@@ -179,8 +247,7 @@ class ProfileConfigLoader:
                     prop.parent = None
                 hierarchy[prop.name] = prop
 
-        configuration._config_dict = hierarchy
-        configuration._config_list = [v for v in hierarchy.values()]
+        configuration._config = hierarchy
 
     def _load_dir(self, _dir):
         ret = {
@@ -216,3 +283,19 @@ class ProfileConfigLoader:
             return "".join(parts[0:len(parts) - 1])
         else:
             return filename
+
+
+class ProfileConfigWriter:
+
+    @staticmethod
+    def write(configuration: ProfiledConfiguration):
+        Log.d("Saving profiled configuration")
+        for profile in configuration.profiles().values():
+            if any([entry.dirty for entry in profile.config_entries.values()]):
+                Log.d("Detected dirty property in profile {}, writing the file".format(profile.name))
+                parser = Parser(os.path.normpath(configuration.config_dir + "/" + profile.name))
+                parser.write({entry.name: entry.value for entry in profile.config_entries.values()})
+                for entry in profile.config_entries.values():
+                    entry.dirty = False
+
+            # todo: handle profile name change

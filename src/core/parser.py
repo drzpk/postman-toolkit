@@ -1,25 +1,28 @@
 class Parser:
-    handle = None
+    filename = None
 
-    def __init__(self, file):
-        self.handle = open(file, "r")
+    def __init__(self, filename):
+        self.filename = filename
 
-    def __del__(self):
-        self.handle.close()
-
-    def parse(self):
+    def parse(self) -> dict:
         d = {}
         n = 1
-        for line in self.handle:
-            try:
-                r = Parser.deserialize_property(line)
-                if r is not None:
-                    d[r[0]] = r[1]
-                n += 1
-            except SyntaxError as e:
-                raise SyntaxError("Error in line " + str(n)) from e
+        with open(self.filename, "r") as handle:
+            for line in handle:
+                try:
+                    r = Parser.deserialize_property(line)
+                    if r is not None:
+                        d[r[0]] = r[1]
+                    n += 1
+                except SyntaxError as e:
+                    raise SyntaxError("Error in line " + str(n)) from e
 
         return d
+
+    def write(self, payload: dict):
+        with open(self.filename, "w") as handle:
+            for name, value in payload.items():
+                handle.write(Parser.serialize_property(name, value) + "\n")
 
     @staticmethod
     def serialize_property(name: str, value: str):
