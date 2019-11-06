@@ -10,6 +10,10 @@ class Log:
         print("[w] %s" % msg)
 
     @staticmethod
+    def e(msg: str):
+        print("[e] %s" % msg)
+
+    @staticmethod
     def d(msg: str):
         if Log.debug:
             print("[d] %s" % msg)

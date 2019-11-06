@@ -1,5 +1,6 @@
 import os
-from typing import Dict
+import copy
+from typing import Dict, List
 
 from .config import Configuration
 from .log import Log
@@ -17,6 +18,7 @@ class ProfileConfigEntry:
     _value = ""
 
     dirty = False
+    backup = None
 
     @property
     def parent(self):
@@ -24,8 +26,8 @@ class ProfileConfigEntry:
 
     @parent.setter
     def parent(self, parent):
+        self.go_dirty()
         self._parent = parent
-        self.dirty = True
 
     @property
     def profile(self):
@@ -33,8 +35,8 @@ class ProfileConfigEntry:
 
     @profile.setter
     def profile(self, profile):
+        self.go_dirty()
         self._profile = profile
-        self.dirty = True
 
     @property
     def name(self):
@@ -42,8 +44,8 @@ class ProfileConfigEntry:
 
     @name.setter
     def name(self, name):
+        self.go_dirty()
         self._name = name
-        self.dirty = True
 
     @property
     def value(self):
@@ -51,12 +53,21 @@ class ProfileConfigEntry:
 
     @value.setter
     def value(self, value):
+        self.go_dirty()
         self._value = value
-        self.dirty = True
 
     @property
     def is_active(self):
         return self._profile.active
+
+    def go_dirty(self):
+        self.dirty = True
+        # Make a shallow copy - original references are needed
+        self.backup = copy.copy(self)
+
+    def go_clean(self):
+        self.dirty = False
+        self.backup = None
 
 
 class Profile:
@@ -69,7 +80,9 @@ class Profile:
     """
 
     profiled_configuration = None
+
     dirty = False
+    backup = None
 
     def __init__(self, name):
         self.name = name
@@ -81,8 +94,8 @@ class Profile:
 
     @name.setter
     def name(self, name):
+        self.go_dirty()
         self._name = name
-        self.dirty = True
 
     @property
     def active(self):
@@ -90,8 +103,8 @@ class Profile:
 
     @active.setter
     def active(self, active):
+        self.go_dirty()
         self._active = active
-        self.dirty = True
 
     def add_entry(self, name, value):
         if name in self.config_entries:
@@ -100,7 +113,6 @@ class Profile:
         entry.name = name
         entry.value = value
         entry.profile = self
-        entry.dirty = True
         self.config_entries[name] = entry
         self.profiled_configuration.reorder()
 
@@ -110,6 +122,26 @@ class Profile:
         del self.config_entries[name]
         self.profiled_configuration.reorder()
 
+    def delete(self):
+        self.profiled_configuration.delete_profile(self)
+
+    def increase_priority(self):
+        self.profiled_configuration.change_profile_priority(self, True)
+
+    def decrease_priority(self):
+        self.profiled_configuration.chagne_profile_priority(self, False)
+
+    def go_dirty(self):
+        self.dirty = True
+        self.backup = copy.copy(self)
+
+    def go_clean(self):
+        self.dirty = False
+        self.backup = None
+
+    def __str__(self):
+        return "Profile(name={}, active={})".format(self.name, self.active)
+
 
 class ProfiledConfiguration:
     _profiles: Dict[str, Profile] = None
@@ -117,17 +149,95 @@ class ProfiledConfiguration:
     _profiles_order: ProfilesOrder = None
 
     config_dir: str = None
+    profiles_dirty: bool = False
+    order_dirty: bool = False
+    deleted_profiles: List[str] = None
 
     def __init__(self, config_dir):
         self._profiles = {}
         self._config = {}
         self.config_dir = config_dir
+        # Could just compare profile directory contents, but who has time to write such algorithms...
+        self.deleted_profiles = []
 
     def profiles(self):
         return self._profiles
 
+    def ordered_profiles(self):
+        ret = []
+        for e in self._profiles_order.entries:
+            ret.append(self._profiles[e.name])
+        return ret
+
     def config(self):
         return self._config
+
+    def create_profile(self, name, active):
+        Log.i("Creating profie {} (active={}".format(name, active))
+        if name in self._profiles:
+            Log.e("Profile {} already exists".format(name))
+            raise Exception("Profile {} already exists".format(name))
+        p = Profile(name)
+        p.active = active
+        p.profiled_configuration = self
+        self._profiles[name] = p
+
+        order_entry = ProfileEntry(name, active)
+        self._profiles_order.entries.append(order_entry)
+        self.profiles_dirty = True
+        self.order_dirty = True
+        self.reorder()
+
+    def delete_profile(self, profile: Profile):
+        Log.i("Deleting profile {}".format(profile))
+        if profile.name not in self._profiles:
+            Log.e("Profile {} wasn't found in configuration. That's weird".format(profile.name))
+            raise Exception("Profile {} wasn't found in configuration. That's weird".format(profile.name))
+        if profile is not self._profiles[profile.name]:
+            Log.e("Inconsistency detected: objects of profile {} don't match".format(profile.name))
+            raise Exception("Inconsistency detected: objects of profile {} don't match".format(profile.name))
+        del self._profiles[profile.name]
+        self.deleted_profiles.append(profile.name)
+        self.profiles_dirty = True
+
+        _del = None
+        for e in self._profiles_order.entries:
+            if e.name == profile.name:
+                _del = e
+                break
+
+        if _del is not None:
+            self._profiles_order.entries.remove(_del)
+            self.order_dirty = True
+        else:
+            Log.w("Profile order entry wasn't found for deleted profile {}".format(profile.name))
+
+        self.reorder()
+
+    def change_profile_priority(self, profile: Profile, increase: bool):
+        Log.i("{} priority of {}".format("Increasing" if increase else "Decreasing", profile))
+        found = None
+        entries = self._profiles_order.entries
+
+        for o in entries:
+            if o.name == profile.name:
+                found = o
+                break
+        if found is None:
+            Log.e("Profile {} wasn't found in order list".format(profile))
+            raise Exception("Profile {} wasn't found in order list".format(profile))
+
+        current = entries.index(found)
+        new = current + (1 if increase else -1)
+        if 0 < new < len(self._profiles_order.entries):
+            Log.d("Indices of profile {}: current={} next={}".format(profile.name, current, new))
+            entries[current], entries[new] = entries[new], entries[current]
+            self.order_dirty = True
+        else:
+            Log.i("Profile {} priority is at {} and cannot be {} further"
+                  .format(profile.name, current, "increased" if increase else "decreased"))
+
+        self.reorder()
 
     def reload(self):
         Log.i("Reloading profiled configuration")
@@ -196,6 +306,7 @@ class ProfileConfigLoader:
                 entry.profile = profile
                 entry.name = k
                 entry.value = v
+                entry.go_clean()
                 profile.config_entries[k] = entry
             raw_profiles[p_name] = profile
 
@@ -237,15 +348,22 @@ class ProfileConfigLoader:
     def rebuild_hierarchy(configuration):
         hierarchy = {}
         for profile in configuration.profiles().values():
-            profile.dirty = False
+            profile_was_dirty = profile.dirty
             for prop in profile.config_entries.values():
-                prop.dirty = False
+                prop_was_dirty = prop.dirty
                 if prop.name in hierarchy:
                     old = hierarchy[prop.name]
                     prop.parent = old
                 else:
                     prop.parent = None
+                if prop.dirty and not prop_was_dirty:
+                    prop.go_clean()
                 hierarchy[prop.name] = prop
+
+            # Dirty flag will cause profile (and config entry) to be flushed to disk and we don't want that,
+            # especially as a result of rebuild action, that isn't really changing anything
+            if profile.dirty and not profile_was_dirty:
+                profile.go_clean()
 
         configuration._config = hierarchy
 
@@ -285,17 +403,59 @@ class ProfileConfigLoader:
             return filename
 
 
+# noinspection PyProtectedMember
 class ProfileConfigWriter:
+
+    # todo: transactions - rollback changes if exception occurs
 
     @staticmethod
     def write(configuration: ProfiledConfiguration):
         Log.d("Saving profiled configuration")
+
         for profile in configuration.profiles().values():
-            if any([entry.dirty for entry in profile.config_entries.values()]):
+            profile_file = os.path.normpath(configuration.config_dir + "/" + profile.name)
+            is_new = not os.path.isfile(profile_file)
+
+            if is_new or any([entry.dirty for entry in profile.config_entries.values()]):
                 Log.d("Detected dirty property in profile {}, writing the file".format(profile.name))
-                parser = Parser(os.path.normpath(configuration.config_dir + "/" + profile.name))
+                parser = Parser(profile_file)
                 parser.write({entry.name: entry.value for entry in profile.config_entries.values()})
                 for entry in profile.config_entries.values():
                     entry.dirty = False
+                    entry.backup = None
 
-            # todo: handle profile name change
+            if not profile.dirty:
+                continue
+
+            ordered_entry = ProfileConfigWriter._get_ordered_profile_entry(configuration, profile.name)
+            if profile.backup is not None and profile.backup.name != profile.name:
+                old_file = os.path.normpath(configuration.config_dir + "/" + profile.backup.name)
+                ordered_entry.name = profile.name
+                configuration.order_dirty = True
+                Log.d("Renaming profile: {} -> {}".format(profile.backup.name, profile.name))
+                os.rename(old_file, profile_file)
+
+            if profile.backup is None or profile.backup.active is not profile.active:
+                ordered_entry.active = profile.active
+                configuration.order_dirty = True
+
+            profile.dirty = False
+            profile.backup = None
+
+        if configuration.order_dirty:
+            Log.d("Updating profiles order file")
+            configuration._profiles_order.save()
+
+        for deleted in configuration.deleted_profiles:
+            Log.d("Deleting file of deleted profile {}".format(deleted))
+            os.remove(os.path.normpath(configuration.config_dir + "/" + deleted))
+
+        configuration.profiles_dirty = False
+        configuration.order_dirty = False
+        configuration.deleted_profiles.clear()
+
+    @staticmethod
+    def _get_ordered_profile_entry(configuration: ProfiledConfiguration, profile_name):
+        for e in configuration._profiles_order.entries:
+            if e.name == profile_name:
+                return e

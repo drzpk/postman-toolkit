@@ -104,9 +104,16 @@ class WebFacade:
             "content": _list
         }
 
+    def create_profile(self, profile_name, active):
+        p = self.config.profiles()
+        if profile_name in p:
+            raise FacadeException("profile {} already exists".format(profile_name))
+        self.config.create_profile(profile_name, active)
+        self.config.save()
+
     def list_profiles(self, active_only):
         _list = []
-        for p in self.config.profiles().values():
+        for p in self.config.ordered_profiles():
             _list.append({
                 "name": p.name,
                 "active": p.active,
@@ -117,6 +124,40 @@ class WebFacade:
             "content": _list
         }
 
+    def set_profile_active_state(self, profile_name, new_state):
+        p = self.config.profiles()
+        if profile_name not in p:
+            return False
+
+        p[profile_name].active = new_state
+        self.config.save()
+        return True
+
+    def change_profile_importance(self, profile_name, increase):
+        p = self.config.profiles()
+        if profile_name not in p:
+            return False
+
+        self.config.change_profile_priority(p[profile_name], increase)
+        self.config.save()
+        return True
+
+    def delete_profile(self, profile_name):
+        p = self.config.profiles()
+        if profile_name not in p:
+            return False
+
+        p[profile_name].delete()
+        self.config.save()
+        return True
+
     def reload_config(self):
         Log.i("Reloading profile configuration")
         self.config.reload()
+
+
+class FacadeException(Exception):
+    message = None
+
+    def __init__(self, message):
+        super().__init__(message)

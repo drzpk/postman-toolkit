@@ -1,6 +1,6 @@
 from flask import Flask, request, make_response, jsonify
 
-from .facade import WebFacade
+from .facade import WebFacade, FacadeException
 from ..core.config import ConfigProperty
 from ..core.toolkit import PostmanToolkit
 
@@ -11,6 +11,19 @@ toolkit = PostmanToolkit()
 facade = WebFacade(toolkit.profiled_configuration)
 
 
+def exception_handler(original):
+    def _wrapper(*args, **kwargs):
+        try:
+            original(*args, **kwargs)
+        except FacadeException as e:
+            error = {
+                "message": e.message
+            }
+            return make_response(error, 400)
+    return _wrapper
+
+
+@exception_handler
 @app.route("/config/<name>", methods=["GET"])
 def get_config(name):
     v = facade.get_config(name)
@@ -20,6 +33,7 @@ def get_config(name):
         return make_response("", 404)
 
 
+@exception_handler
 @app.route("/config", methods=["GET"])
 def list_config():
     active_only = request.args.get("active_only", None) is not None
@@ -28,18 +42,69 @@ def list_config():
     return make_response(v)
 
 
+@exception_handler
 @app.route("/config/reload", methods=["POST"])
 def reload_config():
     facade.reload_config()
+    return make_response("", 204)
+
+
+@exception_handler
+@app.route("/profiles", methods=["POST"])
+def create_profile():
+    body = request.json
+    facade.create_profile(body["name"], body["active"])
     return make_response("", 201)
 
 
+@exception_handler
 @app.route("/profiles", methods=["GET"])
 def list_profiles():
     active_only = request.args.get("active_only", None) is not None
     return make_response(facade.list_profiles(active_only))
 
 
+@exception_handler
+@app.route("/profiles/<name>/activate", methods=["POST"])
+def activate_profile(name):
+    if facade.set_profile_active_state(name, True):
+        return make_response("", 200)
+    return make_response("", 404)
+
+
+@exception_handler
+@app.route("/profiles/<name>/deactivate", methods=["POST"])
+def deactivate_profile(name):
+    if facade.set_profile_active_state(name, False):
+        return make_response("", 200)
+    return make_response("", 404)
+
+
+@exception_handler
+@app.route("/profiles/<name>/up", methods=["POST"])
+def move_profile_up(name):
+    if facade.change_profile_importance(name, True):
+        return make_response("", 200)
+    return make_response("", 404)
+
+
+@exception_handler
+@app.route("/profiles/<name>/down", methods=["POST"])
+def move_profile_down(name):
+    if facade.change_profile_importance(name, False):
+        return make_response("", 200)
+    return make_response("", 404)
+
+
+@exception_handler
+@app.route("/profiles/<name>", methods=["DELETE"])
+def delete_profile(name):
+    if facade.delete_profile(name):
+        return make_response("", 204)
+    return make_response("", 404)
+
+
+@exception_handler
 @app.route("/profiles/<name>/config", methods=["GET"])
 def list_profile_config(name):
     active_only = request.args.get("active_only", None) is not None
@@ -50,6 +115,7 @@ def list_profile_config(name):
         return make_response(config_list)
 
 
+@exception_handler
 @app.route("/profiles/<profile_name>/config/<name>", methods=["POST"])
 def update_profile_config(profile_name, name):
     body = request.json
@@ -66,6 +132,7 @@ def update_profile_config(profile_name, name):
     return make_response("")
 
 
+@exception_handler
 @app.route("/profiles/<profile_name>/config/<name>", methods=["DELETE"])
 def delete_profile_config(profile_name, name):
     if facade.delete_config(profile_name, name):
