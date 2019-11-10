@@ -68,6 +68,7 @@
           const tmp = this.profiles[index];
           Vue.set(this.profiles, index, this.profiles[index + 1]);
           Vue.set(this.profiles, index + 1, tmp);
+          api.moveProfileUp(tmp.name);
         }
       },
 
@@ -80,6 +81,7 @@
           const tmp = this.profiles[index];
           Vue.set(this.profiles, index, this.profiles[index - 1]);
           Vue.set(this.profiles, index - 1, tmp);
+          api.moveProfileDown(tmp.name);
         }
       }
     }

@@ -12,6 +12,10 @@
         <router-view></router-view>
       </div>
     </div>
+
+    <div id="notification-container">
+      <Notifications></Notifications>
+    </div>
   </div>
 </template>
 
@@ -19,11 +23,13 @@
   // TODO: settings page: adding prefix to each property imported to Postman
   // TODO: settings page: updating properties changed in Postman
   import Navigation from '@/components/Navigation';
+  import Notifications from '@/components/Notifications';
 
   export default {
     name: 'App',
     components: {
-      Navigation
+      Navigation,
+      Notifications
     }
   }
 </script>
@@ -33,6 +39,15 @@
   @import "../node_modules/@fortawesome/fontawesome-free/css/all.css";
   #app {
 
+  }
+
+  #notification-container {
+    position: absolute;
+    width: 24%;
+    min-width: 21em;
+    right: 0;
+    top: 100px;
+    margin-right: 2em;
   }
 
   .size-medium {

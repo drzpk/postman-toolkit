@@ -344,10 +344,13 @@ class ProfileConfigLoader:
         self.rebuild_hierarchy(configuration)
         return configuration
 
+    # noinspection PyProtectedMember
     @staticmethod
     def rebuild_hierarchy(configuration):
         hierarchy = {}
-        for profile in configuration.profiles().values():
+        profiles = configuration.profiles()
+        for p_entry in configuration._profiles_order.entries:
+            profile = profiles[p_entry.name]
             profile_was_dirty = profile.dirty
             for prop in profile.config_entries.values():
                 prop_was_dirty = prop.dirty
