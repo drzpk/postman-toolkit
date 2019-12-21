@@ -35,8 +35,9 @@
 </script>
 
 <!--suppress CssUnusedSymbol -->
-<style>
+<style lang="scss">
   @import "../node_modules/@fortawesome/fontawesome-free/css/all.css";
+  @import "styles/common.scss";
   #app {
 
   }

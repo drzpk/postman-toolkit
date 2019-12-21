@@ -27,6 +27,21 @@ function getProfileProperties(profileName) {
   return wrapResponse(axios.get(BASE_PATH + '/profiles/' + profileName + '/config'));
 }
 
+function setProfileProperty(profileName, property, value) {
+  const payload = {
+    value
+  };
+  return wrapResponse(axios.post(BASE_PATH + '/profiles/' + profileName + '/config/' + property, payload));
+}
+
+function addProfileProperty(profileName, property, value) {
+  const payload = {
+    name: property,
+    value
+  };
+  return wrapResponse(axios.put(BASE_PATH + '/profiles/' + profileName + '/config', payload));
+}
+
 function moveProfileUp(profileName) {
   return wrapResponse(axios.post(BASE_PATH + '/profiles/' + profileName + '/up'));
 }
@@ -46,6 +61,8 @@ function getPropertyDetails(name, includeInactive = false) {
 export default {
   getProfiles,
   getProfileProperties,
+  setProfileProperty,
+  addProfileProperty,
   moveProfileUp,
   moveProfileDown,
   getAllProperties,

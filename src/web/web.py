@@ -116,6 +116,22 @@ def list_profile_config(name):
 
 
 @exception_handler
+@app.route("/profiles/<profile_name>/config", methods=["PUT"])
+def create_profile_config(profile_name):
+    body = request.json
+    if body is None or "name" not in body or body["name"] is None:
+        return make_response("Name not specified", 422)
+    value = ""
+    if "value" in body and body["value"] is not None:
+        value = body["value"]
+
+    if facade.create_config(profile_name, body["name"], value):
+        return make_response("", 201)
+    else:
+        return make_response("", 400)
+
+
+@exception_handler
 @app.route("/profiles/<profile_name>/config/<name>", methods=["POST"])
 def update_profile_config(profile_name, name):
     body = request.json
@@ -144,6 +160,8 @@ def delete_profile_config(profile_name, name):
 def after_request(response):
     if app.debug:
         response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "*"
 
     return response
 
