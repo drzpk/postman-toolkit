@@ -156,6 +156,18 @@ def delete_profile_config(profile_name, name):
     return make_response("", 404)
 
 
+@exception_handler
+@app.route("/profiles/<profile_name>/config/<old_name>/rename", methods=["POST"])
+def rename_profile_config(profile_name, old_name):
+    body = request.json
+    if body is None or "new_name" not in body or body["new_name"] is None:
+        return make_response("New name not specified", 422)
+
+    if facade.rename_profile(profile_name, old_name, body["new_name"]):
+        return make_response("", 204)
+    return make_response("", 404)
+
+
 @app.after_request
 def after_request(response):
     if app.debug:

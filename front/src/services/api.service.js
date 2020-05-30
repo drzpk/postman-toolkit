@@ -34,7 +34,14 @@ function setProfileProperty(profileName, property, value) {
   return wrapResponse(axios.post(BASE_PATH + '/profiles/' + profileName + '/config/' + property, payload));
 }
 
-function addProfileProperty(profileName, property, value) {
+function renameProfileProperty(profileName, oldName, newName) {
+  const payload = {
+   new_name: newName
+  };
+  return wrapResponse(axios.post(BASE_PATH + '/profiles/' + profileName + '/config/' + oldName + '/rename', payload));
+}
+
+  function addProfileProperty(profileName, property, value) {
   const payload = {
     name: property,
     value
@@ -62,6 +69,7 @@ export default {
   getProfiles,
   getProfileProperties,
   setProfileProperty,
+  renameProfileProperty,
   addProfileProperty,
   moveProfileUp,
   moveProfileDown,

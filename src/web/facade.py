@@ -79,6 +79,20 @@ class WebFacade:
         self.config.save()
         return True
 
+    def rename_profile(self, profile_name, old_name, new_name):
+        profiles = self.config.profiles()
+        if profile_name not in profiles:
+            Log.d("Profile {} wasn't found".format(profile_name))
+            return False
+
+        if old_name not in profiles[profile_name].config_entries:
+            Log.d("Config entry {} wasn't found in profile {}".format(old_name, profile_name))
+            return False
+
+        profiles[profile_name].rename_entry(old_name, new_name)
+        self.config.save()
+        return True
+
     def list_config(self, active_only, profile_name=None):
         _list = []
 

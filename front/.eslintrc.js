@@ -11,7 +11,7 @@ module.exports = {
   extends: [
     // https://github.com/vuejs/eslint-plugin-vue#priority-a-essential-error-prevention
     // consider switching to `plugin:vue/strongly-recommended` or `plugin:vue/recommended` for stricter rules.
-    'plugin:vue/essential', 
+    'plugin:vue/essential',
     // https://github.com/standard/standard/blob/master/docs/RULES-en.md
     'standard'
   ],
@@ -28,6 +28,8 @@ module.exports = {
     'semi': ['off', 'always'],
     'no-multiple-empty-lines': [2, {'max': 2}],
     'indent': 'off',
-    'space-before-function-paren': 'off'
+    'space-before-function-paren': 'off',
+    'quotes': 1,
+    'no-throw-literal': 1
   }
 };

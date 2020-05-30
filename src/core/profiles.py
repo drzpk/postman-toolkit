@@ -122,6 +122,13 @@ class Profile:
         del self.config_entries[name]
         self.profiled_configuration.reorder()
 
+    def rename_entry(self, old_name, new_name):
+        if old_name not in self.config_entries:
+            raise Exception("config entry {} doesn't exist in profile {}".format(old_name, self.name))
+        self.config_entries[new_name] = self.config_entries[old_name]
+        self.config_entries[new_name].name = new_name
+        del self.config_entries[old_name]
+
     def delete(self):
         self.profiled_configuration.delete_profile(self)
 
