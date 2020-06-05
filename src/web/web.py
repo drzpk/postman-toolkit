@@ -23,6 +23,11 @@ def exception_handler(original):
     return _wrapper
 
 
+@app.teardown_appcontext
+def on_destroy():
+    PostmanToolkit.destroy()
+
+
 @exception_handler
 @app.route("/config/<name>", methods=["GET"])
 def get_config(name):
