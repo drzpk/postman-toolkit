@@ -1,173 +1,169 @@
-from ..core.log import Log
-from ..core.profiles import ProfiledConfiguration
+from ..core.toolkit import PostmanToolkit
+from ..core.model.context import Context
+from ..core.model.environment import Environment
+
+# TODO: environment support in frontend
+ENVIRONMENT_NAME = "default"
+
+
+def interceptor(function):
+    def _wrapper(*args, **kwargs):
+        ret = function(*args, **kwargs)
+        args[0].toolkit.persist_changes()
+        return ret
+    return _wrapper
 
 
 class WebFacade:
-    config: ProfiledConfiguration = None
+    context: Context
+    toolkit: PostmanToolkit
 
-    def __init__(self, profiled_configuration):
-        self.config = profiled_configuration
+    def __init__(self, toolkit: PostmanToolkit):
+        self.context = toolkit.context
+        self.toolkit = toolkit
 
-    def get_config(self, name):
-        config = self.config.config()
-        if name not in config:
-            return None
+    @interceptor
+    def get_property_details(self, property_name):
+        env = self._find_env(ENVIRONMENT_NAME)
+        chain = env.get_property_chain(property_name, enabled_only=False)
+        if len(chain) == 0:
+            raise Exception("Property {} wasn't found".format(property_name))
 
-        e = config[name]
-        ancestors = []
-        p = e.parent
-        while p is not None:
-            ancestors.append({
-                "name": p.name,
-                "value": p.value,
-                "profile": p.profile.name,
-                "active": e.is_active
-            })
-            p = p.parent
-
+        first = chain[0]
         content = {
-            "name": e.name,
-            "value": e.value,
-            "profile": e.profile.name,
-            "active": e.is_active,
-            "ancestors": ancestors
+            "name": first[1].name,
+            "value": first[1].value,
+            "profile": first[0].name,
+            "active": first[0].enabled and first[1].enabled
         }
+
+        ancestors = []
+        for i in range(1, len(chain)):
+            ancestor = chain[i]
+            ancestors.append({
+                "name": ancestor[1].name,
+                "value": ancestor[1].value,
+                "profile": ancestor[0].name,
+                "active": ancestor[0].enabled and ancestor[1].enabled
+            })
+
+        content["ancestors"] = ancestors
         return {
             "content": content
         }
 
-    def update_config(self, profile_name, name, value):
-        profiles = self.config.profiles()
-        if profile_name not in profiles:
-            Log.d("Profile {} wasn't found".format(profile_name))
-            return False
+    @interceptor
+    def set_property_value(self, profile_name, property_name, value):
+        env = self._find_env(ENVIRONMENT_NAME)
 
-        if name not in profiles[profile_name].config_entries:
-            Log.d("Config entry {} wasn't found in profile {}".format(name, profile_name))
-            return False
+        profile = env.find_profile(profile_name)
+        if profile is None:
+            raise Exception("Profile {} wasn't found".format(profile_name))
 
-        entry = profiles[profile_name].config_entries[name]
-        entry.value = value
-        self.config.save()
-        return True
+        prop = profile.find_property(property_name)
+        if prop is None:
+            raise Exception("Profile {} doesn't have property {}".format(profile_name, property_name))
 
-    def create_config(self, profile_name, name, value):
-        profiles = self.config.profiles()
-        if profile_name not in profiles:
-            Log.d("Profile {} wasn't found".format(profile_name))
-            return False
+        prop.value = str(value)
 
-        if name in profiles[profile_name].config_entries:
-            Log.d("Config entry {} already exists in profile {}".format(name, profile_name))
-            return False
+    @interceptor
+    def create_property(self, profile_name, property_name, value):
+        env = self._find_env(ENVIRONMENT_NAME)
+        profile = env.find_profile(profile_name)
+        if profile is None:
+            raise Exception("Profile {} wasn't found".format(profile_name))
 
-        profiles[profile_name].add_entry(name, value)
-        self.config.save()
-        return True
+        profile.create_property(property_name, value)
 
-    def delete_config(self, profile_name, name):
-        profiles = self.config.profiles()
-        if profile_name not in profiles:
-            Log.d("Profile {} wasn't found".format(profile_name))
-            return False
+    @interceptor
+    def delete_property(self, profile_name, property_name):
+        env = self._find_env(ENVIRONMENT_NAME)
+        profile = env.find_profile(profile_name)
+        if profile is None:
+            raise Exception("Profile {} wasn't found".format(profile_name))
 
-        if name not in profiles[profile_name].config_entries:
-            Log.d("Config entry {} wasn't found in profile {}".format(name, profile_name))
-            return False
+        profile.delete_property(property_name)
 
-        profiles[profile_name].delete_entry(name)
-        self.config.save()
-        return True
+    @interceptor
+    def rename_property(self, profile_name, old_property_name, new_property_name):
+        env = self._find_env(ENVIRONMENT_NAME)
+        profile = env.find_profile(profile_name)
+        if profile is None:
+            raise Exception("Profile {} wasn't found".format(profile_name))
 
-    def rename_profile(self, profile_name, old_name, new_name):
-        profiles = self.config.profiles()
-        if profile_name not in profiles:
-            Log.d("Profile {} wasn't found".format(profile_name))
-            return False
+        prop = profile.find_property(old_property_name)
+        if prop is None:
+            raise Exception("Property {} wasn't found in profile {}".format(old_property_name, profile_name))
 
-        if old_name not in profiles[profile_name].config_entries:
-            Log.d("Config entry {} wasn't found in profile {}".format(old_name, profile_name))
-            return False
+        prop.name = new_property_name
 
-        profiles[profile_name].rename_entry(old_name, new_name)
-        self.config.save()
-        return True
+    @interceptor
+    def list_properties(self, active_only, profile_name=None):
+        env = self._find_env(ENVIRONMENT_NAME)
+        names = env.get_property_names(profile_name)
 
-    def list_config(self, active_only, profile_name=None):
         _list = []
-
-        if profile_name is None:
-            for e in self.config.config().values():
-                _list.append({
-                    "name": e.name,
-                    "value": e.value,
-                    "profile": e.profile.name
-                })
-        else:
-            profiles = self.config.profiles()
-            if profile_name not in profiles:
-                return None
-            for v in profiles[profile_name].config_entries.values():
-                _list.append({
-                    "name": v.name,
-                    "value": v.value,
-                    "profile": v.profile.name
-                })
-
-        return {
-            "content": _list
-        }
-
-    def create_profile(self, profile_name, active):
-        p = self.config.profiles()
-        if profile_name in p:
-            raise FacadeException("profile {} already exists".format(profile_name))
-        self.config.create_profile(profile_name, active)
-        self.config.save()
-
-    def list_profiles(self, active_only):
-        _list = []
-        for p in self.config.ordered_profiles():
+        for name in names:
+            (profile, prop) = env.get_first_property(name, active_only)
             _list.append({
-                "name": p.name,
-                "active": p.active,
-                "properties_count": len(p.config_entries)
+                "name": prop.name,
+                "value": prop.value,
+                "profile": profile.name
             })
 
         return {
             "content": _list
         }
 
-    def set_profile_active_state(self, profile_name, new_state):
-        p = self.config.profiles()
-        if profile_name not in p:
-            return False
+    @interceptor
+    def create_profile(self, profile_name, active):
+        env = self._find_env(ENVIRONMENT_NAME)
+        env.create_profile(profile_name, active)
 
-        p[profile_name].active = new_state
-        self.config.save()
-        return True
+    def list_profiles(self, active_only):
+        env = self._find_env(ENVIRONMENT_NAME)
+        profiles = env.get_prioritized_profiles()
+        if active_only:
+            profiles = filter(lambda x: x.enabled, profiles)
 
-    def change_profile_importance(self, profile_name, increase):
-        p = self.config.profiles()
-        if profile_name not in p:
-            return False
+        _list = []
+        for p in profiles:
+            _list.append({
+                "name": p.name,
+                "active": p.enabled,
+                "properties_count": len(p.properties)
+            })
 
-        self.config.change_profile_priority(p[profile_name], increase)
-        self.config.save()
-        return True
+        return {
+            "content": _list
+        }
 
+    @interceptor
+    def set_profile_enabled_state(self, profile_name, new_state):
+        env = self._find_env(ENVIRONMENT_NAME)
+        profile = env.find_profile(profile_name)
+        if profile is None:
+            raise Exception("Profile {} wasn't found".format(profile_name))
+        profile.enabled = bool(new_state)
+
+    @interceptor
+    def change_profile_priority(self, profile_name, increase):
+        env = self._find_env(ENVIRONMENT_NAME)
+        if increase:
+            return env.increase_profile_priority(profile_name)
+        else:
+            return env.decrease_profile_priority(profile_name)
+
+    @interceptor
     def delete_profile(self, profile_name):
-        p = self.config.profiles()
-        if profile_name not in p:
-            return False
+        env = self._find_env(ENVIRONMENT_NAME)
+        env.delete_profile(profile_name)
 
-        p[profile_name].delete()
-        self.config.save()
-        return True
-
-    def reload_config(self):
-        Log.i("Reloading profile configuration")
-        self.config.reload()
+    def _find_env(self, name) -> Environment:
+        env = self.context.find_environment(ENVIRONMENT_NAME)
+        if env is None:
+            raise Exception("Environment {} wasn't found".format(ENVIRONMENT_NAME))
+        return env
 
 
 class FacadeException(Exception):

@@ -32,7 +32,7 @@ class MigrationManager:
 
     @staticmethod
     def migrate():
-        db = DBManager.db
+        db = DBManager.db()
         MigrationManager._load_migration_files()
         MigrationManager._create_migration_table(db)
         MigrationManager._check_for_failed_migrations(db)
@@ -89,22 +89,39 @@ class MigrationManager:
     def _execute_migration(db, migration):
         Log.i("Executing migration {}. {}".format(migration.number, migration.name))
 
-        start = None
         exc = None
-
-        c = db.cursor()
+        statements = MigrationManager._split_statements(migration.content)
+        start = time.time()
         try:
-            start = time.time()
-            c.execute(migration.content)
+            for statement in statements:
+                MigrationManager._execute_statement(db, statement)
         except sqlite3.OperationalError as e:
             Log.e("Error while executing migration {}. {}".format(migration.number, migration.name))
             exc = e
         finally:
             end = time.time()
-            c.close()
 
         execution_time = math.floor((end - start) * 1000)
         MigrationManager._save_migration_status(db, migration, execution_time, exc is None)
+
+        if exc is not None:
+            raise exc
+
+    @staticmethod
+    def _split_statements(content: str) -> [str]:
+        return list(filter(lambda x: not not x.strip(), content.split("\n\n")))
+
+    @staticmethod
+    def _execute_statement(db, content):
+        c = db.cursor()
+        exc = None
+
+        try:
+            c.execute(content)
+        except sqlite3.OperationalError as e:
+            exc = e
+        finally:
+            c.close()
 
         if exc is not None:
             raise exc

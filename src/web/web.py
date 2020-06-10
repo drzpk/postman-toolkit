@@ -6,9 +6,9 @@ from ..core.toolkit import PostmanToolkit
 
 
 app = Flask("postman-toolkit-web")
-
-toolkit = PostmanToolkit()
-facade = WebFacade(toolkit.profiled_configuration)
+with app.app_context():
+    toolkit = PostmanToolkit()
+    facade = WebFacade(toolkit)
 
 
 def exception_handler(original):
@@ -24,14 +24,14 @@ def exception_handler(original):
 
 
 @app.teardown_appcontext
-def on_destroy():
+def on_destroy(_):
     PostmanToolkit.destroy()
 
 
 @exception_handler
 @app.route("/config/<name>", methods=["GET"])
 def get_config(name):
-    v = facade.get_config(name)
+    v = facade.get_property_details(name)
     if v is not None:
         return jsonify(v)
     else:
@@ -43,15 +43,8 @@ def get_config(name):
 def list_config():
     active_only = request.args.get("active_only", None) is not None
 
-    v = facade.list_config(active_only)
+    v = facade.list_properties(active_only)
     return make_response(v)
-
-
-@exception_handler
-@app.route("/config/reload", methods=["POST"])
-def reload_config():
-    facade.reload_config()
-    return make_response("", 204)
 
 
 @exception_handler
@@ -72,7 +65,7 @@ def list_profiles():
 @exception_handler
 @app.route("/profiles/<name>/activate", methods=["POST"])
 def activate_profile(name):
-    if facade.set_profile_active_state(name, True):
+    if facade.set_profile_enabled_state(name, True):
         return make_response("", 200)
     return make_response("", 404)
 
@@ -80,7 +73,7 @@ def activate_profile(name):
 @exception_handler
 @app.route("/profiles/<name>/deactivate", methods=["POST"])
 def deactivate_profile(name):
-    if facade.set_profile_active_state(name, False):
+    if facade.set_profile_enabled_state(name, False):
         return make_response("", 200)
     return make_response("", 404)
 
@@ -88,7 +81,7 @@ def deactivate_profile(name):
 @exception_handler
 @app.route("/profiles/<name>/up", methods=["POST"])
 def move_profile_up(name):
-    if facade.change_profile_importance(name, True):
+    if facade.change_profile_priority(name, True):
         return make_response("", 200)
     return make_response("", 404)
 
@@ -96,7 +89,7 @@ def move_profile_up(name):
 @exception_handler
 @app.route("/profiles/<name>/down", methods=["POST"])
 def move_profile_down(name):
-    if facade.change_profile_importance(name, False):
+    if facade.change_profile_priority(name, False):
         return make_response("", 200)
     return make_response("", 404)
 
@@ -113,7 +106,7 @@ def delete_profile(name):
 @app.route("/profiles/<name>/config", methods=["GET"])
 def list_profile_config(name):
     active_only = request.args.get("active_only", None) is not None
-    config_list = facade.list_config(active_only, name)
+    config_list = facade.list_properties(active_only, name)
     if config_list is None:
         return make_response("", 404)
     else:
@@ -130,7 +123,7 @@ def create_profile_config(profile_name):
     if "value" in body and body["value"] is not None:
         value = body["value"]
 
-    if facade.create_config(profile_name, body["name"], value):
+    if facade.create_property(profile_name, body["name"], value):
         return make_response("", 201)
     else:
         return make_response("", 400)
@@ -143,9 +136,9 @@ def update_profile_config(profile_name, name):
     if body is None or "value" not in body or body["value"] is None:
         return make_response("New value not specified", 422)
 
-    if not facade.update_config(profile_name, name, body["value"]):
+    if not facade.set_property_value(profile_name, name, body["value"]):
         if "create" in body and body["create"] is True:
-            facade.create_config(profile_name, name, body["value"])
+            facade.create_property(profile_name, name, body["value"])
             return make_response("", 201)
         else:
             return make_response("", 404)
@@ -156,7 +149,7 @@ def update_profile_config(profile_name, name):
 @exception_handler
 @app.route("/profiles/<profile_name>/config/<name>", methods=["DELETE"])
 def delete_profile_config(profile_name, name):
-    if facade.delete_config(profile_name, name):
+    if facade.delete_property(profile_name, name):
         return make_response("", 204)
     return make_response("", 404)
 
@@ -168,7 +161,7 @@ def rename_profile_config(profile_name, old_name):
     if body is None or "new_name" not in body or body["new_name"] is None:
         return make_response("New name not specified", 422)
 
-    if facade.rename_profile(profile_name, old_name, body["new_name"]):
+    if facade.rename_property(profile_name, old_name, body["new_name"]):
         return make_response("", 204)
     return make_response("", 404)
 
