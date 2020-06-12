@@ -12,6 +12,10 @@ class Property(Entity):
     _profile_id: int
 
     @property
+    def id(self):
+        return self._id
+
+    @property
     def name(self):
         return self._name
 
@@ -53,7 +57,7 @@ class Property(Entity):
             "name": self.name,
             "value": self.value,
             "type": self.type,
-            "enabled:": 1 if self.enabled else 0,
+            "enabled": 1 if self.enabled else 0,
             "profile_id": self._profile_id
         }
 

@@ -60,6 +60,13 @@ class Profile(Entity):
         self._environment_id = environment_id
         self.mark_dirty()
 
+    def get_property(self, property_id) -> Optional[Property]:
+        matched = list(filter(lambda p: p.id == property_id, self.properties))
+        if len(matched) == 1:
+            return matched[0]
+        else:
+            return None
+
     def find_property(self, property_name) -> Optional[Property]:
         matched = list(filter(lambda p: p.name == property_name, self.properties))
         if len(matched) > 1:
@@ -79,8 +86,8 @@ class Profile(Entity):
         self.properties.append(prop)
         return prop
 
-    def delete_property(self, name) -> bool:
-        existing = self.find_property(name)
+    def delete_property(self, property_id) -> bool:
+        existing = self.get_property(property_id)
         if existing is None:
             return False
 

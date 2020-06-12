@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 from .base.entity import Entity
 from .profile import Profile
@@ -42,7 +42,14 @@ class Environment(Entity):
         lowest_existing_priority = max(priority_list)
         profile = Profile.create(profile_name, lowest_existing_priority + 1, self.id)
         profile.enabled = is_enabled
+        self.profiles.append(profile)
         return profile
+
+    def get_profile(self, profile_id) -> Optional[Profile]:
+        for profile in self.profiles:
+            if profile.id == int(profile_id):
+                return profile
+        return None
 
     def find_profile(self, profile_name):
         for profile in self.profiles:
@@ -50,11 +57,11 @@ class Environment(Entity):
                 return profile
         return None
 
-    def increase_profile_priority(self, profile_name) -> bool:
-        return self._change_profile_priority(profile_name, -1)
+    def increase_profile_priority(self, profile_id) -> bool:
+        return self._change_profile_priority(profile_id, -1)
 
-    def decrease_profile_priority(self, profile_name) -> bool:
-        return self._change_profile_priority(profile_name, 1)
+    def decrease_profile_priority(self, profile_id) -> bool:
+        return self._change_profile_priority(profile_id, 1)
 
     def get_prioritized_profiles(self) -> List[Profile]:
         """
@@ -63,9 +70,9 @@ class Environment(Entity):
         """
         return sorted(self.profiles, key=lambda p: p.priority)
 
-    def delete_profile(self, profile_name):
+    def delete_profile(self, profile_id):
         profiles = self.get_prioritized_profiles()
-        profile_pos = self._get_required_profile_index(profiles, profile_name)
+        profile_pos = self._get_required_profile_index(profiles, profile_id)
         profile_to_delete = profiles[profile_pos]
 
         self.profiles.remove(profile_to_delete)
@@ -79,7 +86,7 @@ class Environment(Entity):
         """
         Returns list of pairs (profile, property) for given property name.
         List order is from highest to lowest priority
-        :param property_name: proparty name
+        :param property_name: property name
         :param enabled_only: whether to return only lsit of active profiles AND active properties
         :return: property list ordered form highest to lowest priority
         """
@@ -107,11 +114,11 @@ class Environment(Entity):
         else:
             return None
 
-    def get_property_names(self, profile_name=None) -> List[str]:
-        if profile_name is not None:
-            profile = self.find_profile(profile_name)
+    def get_property_names(self, profile_id=None) -> List[str]:
+        if profile_id is not None:
+            profile = self.get_profile(profile_id)
             if profile is None:
-                raise Exception("Profile {} wasn't found".format(profile_name))
+                raise Exception("Profile {} wasn't found".format(profile_id))
             profiles = [profile]
         else:
             profiles = self.profiles
@@ -131,29 +138,29 @@ class Environment(Entity):
         self._id = int(data["id"])
         self._name = data["name"]
 
-    def _change_profile_priority(self, profile_name, direction) -> bool:
+    def _change_profile_priority(self, profile_id, direction) -> bool:
         profiles = self.get_prioritized_profiles()
-        profile_pos = self._get_required_profile_index(profiles, profile_name)
+        profile_pos = self._get_required_profile_index(profiles, profile_id)
 
         new_pos = profile_pos + direction
         if new_pos < 0 or new_pos >= len(profiles):
             return False
 
         tmp = profiles[profile_pos].priority
-        profiles[profile_pos].priority = profiles[new_pos]
-        profiles[new_pos] = tmp
+        profiles[profile_pos].priority = profiles[new_pos].priority
+        profiles[new_pos].priority = tmp
         return True
 
     @staticmethod
-    def _get_required_profile_index(profiles, name):
+    def _get_required_profile_index(profiles, profile_id):
         profile_pos = -1
         for i in range(len(profiles)):
-            if profiles[i].name == name:
+            if profiles[i].id == int(profile_id):
                 profile_pos = i
                 break
 
         if profile_pos == -1:
-            raise Exception("Profile {} wasn't found".format(name))
+            raise Exception("Profile {} wasn't found".format(profile_id))
 
         return profile_pos
 

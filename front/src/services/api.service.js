@@ -23,38 +23,46 @@ function getProfiles() {
   return wrapResponse(axios.get(BASE_PATH + '/profiles'));
 }
 
-function getProfileProperties(profileName) {
-  return wrapResponse(axios.get(BASE_PATH + '/profiles/' + profileName + '/config'));
+function getProfileProperties(id) {
+  return wrapResponse(axios.get(BASE_PATH + '/profiles/' + id + '/config'));
 }
 
-function setProfileProperty(profileName, property, value) {
+function setProfileProperty(profileId, propertyId, value) {
   const payload = {
     value
   };
-  return wrapResponse(axios.post(BASE_PATH + '/profiles/' + profileName + '/config/' + property, payload));
+  return wrapResponse(axios.post(BASE_PATH + '/profiles/' + profileId + '/config/' + propertyId, payload));
 }
 
-function renameProfileProperty(profileName, oldName, newName) {
+function renameProfileProperty(profileId, propertyId, newName) {
   const payload = {
-   new_name: newName
+    new_name: newName
   };
-  return wrapResponse(axios.post(BASE_PATH + '/profiles/' + profileName + '/config/' + oldName + '/rename', payload));
+  return wrapResponse(axios.post(BASE_PATH + '/profiles/' + profileId + '/config/' + propertyId + '/rename', payload));
 }
 
-  function addProfileProperty(profileName, property, value) {
+function addProfileProperty(profileId, propertyName, value) {
   const payload = {
-    name: property,
+    name: propertyName,
     value
   };
-  return wrapResponse(axios.put(BASE_PATH + '/profiles/' + profileName + '/config', payload));
+  return wrapResponse(axios.put(BASE_PATH + '/profiles/' + profileId + '/config', payload));
 }
 
-function moveProfileUp(profileName) {
-  return wrapResponse(axios.post(BASE_PATH + '/profiles/' + profileName + '/up'));
+function moveProfileUp(id) {
+  return wrapResponse(axios.post(BASE_PATH + '/profiles/' + id + '/up'));
 }
 
-function moveProfileDown(profileName) {
-  return wrapResponse(axios.post(BASE_PATH + '/profiles/' + profileName + '/down'));
+function moveProfileDown(id) {
+  return wrapResponse(axios.post(BASE_PATH + '/profiles/' + id + '/down'));
+}
+
+function addProfile(profileName, active) {
+  const payload = {
+    name: profileName,
+    active: active
+  };
+  return wrapResponse(axios.post(BASE_PATH + '/profiles', payload));
 }
 
 function getAllProperties() {
@@ -62,7 +70,7 @@ function getAllProperties() {
 }
 
 function getPropertyDetails(name, includeInactive = false) {
-  return wrapResponse(axios.get(BASE_PATH + '/config/' + name, {}));
+  return wrapResponse(axios.post(BASE_PATH + '/config/details', {name}));
 }
 
 export default {
@@ -73,6 +81,7 @@ export default {
   addProfileProperty,
   moveProfileUp,
   moveProfileDown,
+  addProfile,
   getAllProperties,
-  getPropertyDetails
+  getPropertyDetails,
 }

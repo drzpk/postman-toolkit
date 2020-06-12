@@ -29,7 +29,7 @@
   export default {
     name: 'ProfileConfig',
     components: {ConfigProperty},
-    props: ['profileName'],
+    props: ['profileId', 'profileName'],
     data() {
       return {
         properties: null,
@@ -40,7 +40,7 @@
     methods: {
       refreshProfile() {
         this.properties = [];
-        api.getProfileProperties(this.profileName).then((properties) => {
+        api.getProfileProperties(this.profileId).then((properties) => {
           this.properties = properties;
         });
       },
@@ -52,7 +52,7 @@
         }
 
         const that = this;
-        api.addProfileProperty(this.profileName, this.newPropertyName, '').then(function () {
+        api.addProfileProperty(this.profileId, this.newPropertyName, '').then(function () {
           that.refreshProfile();
           that.showNewPropertyDialog = false;
           notificationService.emitInfo(`Property ${that.newPropertyName} has been created`);
@@ -62,7 +62,7 @@
       }
     },
     watch: {
-      profileName: function () {
+      profileId: function () {
         this.refreshProfile();
         this.showNewPropertyDialog = false;
         this.newPropertyName = '';

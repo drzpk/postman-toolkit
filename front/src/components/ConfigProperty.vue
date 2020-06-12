@@ -58,7 +58,7 @@
     methods: {
       updateValue() {
         if (this.property.oldValue !== this.property.value) {
-          api.setProfileProperty(this.property.profile, this.property.name, this.property.value);
+          api.setProfileProperty(this.property.profile, this.property.id, this.property.value);
           this.property.oldValue = this.property.value;
         }
       },

@@ -31,9 +31,10 @@ class WebFacade:
 
         first = chain[0]
         content = {
+            "id": first[1].id,
             "name": first[1].name,
             "value": first[1].value,
-            "profile": first[0].name,
+            "profile": first[0].id,
             "active": first[0].enabled and first[1].enabled
         }
 
@@ -41,9 +42,10 @@ class WebFacade:
         for i in range(1, len(chain)):
             ancestor = chain[i]
             ancestors.append({
+                "id": ancestor[1].id,
                 "name": ancestor[1].name,
                 "value": ancestor[1].value,
-                "profile": ancestor[0].name,
+                "profile": ancestor[0].id,
                 "active": ancestor[0].enabled and ancestor[1].enabled
             })
 
@@ -53,36 +55,36 @@ class WebFacade:
         }
 
     @interceptor
-    def set_property_value(self, profile_name, property_name, value):
+    def set_property_value(self, profile_id, property_id, value):
         env = self._find_env(ENVIRONMENT_NAME)
 
-        profile = env.find_profile(profile_name)
+        profile = env.get_profile(int(profile_id))
         if profile is None:
-            raise Exception("Profile {} wasn't found".format(profile_name))
+            raise Exception("Profile {} wasn't found".format(profile_id))
 
-        prop = profile.find_property(property_name)
+        prop = profile.get_property(int(property_id))
         if prop is None:
-            raise Exception("Profile {} doesn't have property {}".format(profile_name, property_name))
+            raise Exception("Profile {} doesn't have property {}".format(profile_id, property_id))
 
         prop.value = str(value)
 
     @interceptor
-    def create_property(self, profile_name, property_name, value):
+    def create_property(self, profile_id, property_name, value):
         env = self._find_env(ENVIRONMENT_NAME)
-        profile = env.find_profile(profile_name)
+        profile = env.get_profile(profile_id)
         if profile is None:
-            raise Exception("Profile {} wasn't found".format(profile_name))
+            raise Exception("Profile {} wasn't found".format(profile_id))
 
         profile.create_property(property_name, value)
 
     @interceptor
-    def delete_property(self, profile_name, property_name):
+    def delete_property(self, profile_id, property_id):
         env = self._find_env(ENVIRONMENT_NAME)
-        profile = env.find_profile(profile_name)
+        profile = env.get_profile(profile_id)
         if profile is None:
-            raise Exception("Profile {} wasn't found".format(profile_name))
+            raise Exception("Profile {} wasn't found".format(profile_id))
 
-        profile.delete_property(property_name)
+        profile.delete_property(property_id)
 
     @interceptor
     def rename_property(self, profile_name, old_property_name, new_property_name):
@@ -98,17 +100,23 @@ class WebFacade:
         prop.name = new_property_name
 
     @interceptor
-    def list_properties(self, active_only, profile_name=None):
+    def list_properties(self, active_only, profile_id=None):
         env = self._find_env(ENVIRONMENT_NAME)
-        names = env.get_property_names(profile_name)
+        _id = int(profile_id) if profile_id is not None else None
+        names = env.get_property_names(_id)
+        profile = env.get_profile(_id) if _id is not None else None
 
         _list = []
         for name in names:
-            (profile, prop) = env.get_first_property(name, active_only)
+            if profile is None:
+                (p, prop) = env.get_first_property(name, active_only)
+            else:
+                (p, prop) = profile, profile.find_property(name)
             _list.append({
+                "id": prop.id,
                 "name": prop.name,
                 "value": prop.value,
-                "profile": profile.name
+                "profile": p.id
             })
 
         return {
@@ -129,6 +137,7 @@ class WebFacade:
         _list = []
         for p in profiles:
             _list.append({
+                "id": p.id,
                 "name": p.name,
                 "active": p.enabled,
                 "properties_count": len(p.properties)
@@ -139,20 +148,20 @@ class WebFacade:
         }
 
     @interceptor
-    def set_profile_enabled_state(self, profile_name, new_state):
+    def set_profile_enabled_state(self, profile_id, new_state):
         env = self._find_env(ENVIRONMENT_NAME)
-        profile = env.find_profile(profile_name)
+        profile = env.get_profile(profile_id)
         if profile is None:
-            raise Exception("Profile {} wasn't found".format(profile_name))
+            raise Exception("Profile {} wasn't found".format(profile_id))
         profile.enabled = bool(new_state)
 
     @interceptor
-    def change_profile_priority(self, profile_name, increase):
+    def change_profile_priority(self, profile_id, increase):
         env = self._find_env(ENVIRONMENT_NAME)
         if increase:
-            return env.increase_profile_priority(profile_name)
+            return env.increase_profile_priority(profile_id)
         else:
-            return env.decrease_profile_priority(profile_name)
+            return env.decrease_profile_priority(profile_id)
 
     @interceptor
     def delete_profile(self, profile_name):

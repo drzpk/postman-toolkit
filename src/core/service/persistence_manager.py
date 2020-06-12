@@ -24,6 +24,7 @@ class PersistenceManager:
             e = Environment()
             data = {cname: value for (cname, value) in zip(column_names, row)}
             e.deserialize(data)
+            PersistenceManager._populate_environment(db, e)
             environments.append(e)
 
         return environments
@@ -44,7 +45,7 @@ class PersistenceManager:
     @staticmethod
     def _populate_environment(db, environment: Environment):
         c = db.cursor()
-        c.execute("select * from profile where environment_id = ?", environment.id)
+        c.execute("select * from profile where environment_id = ?", (environment.id,))
         profile_columns = [d[0] for d in c.description]
         rows = c.fetchall()
 
@@ -53,7 +54,7 @@ class PersistenceManager:
             data = {cname: value for (cname, value) in zip(profile_columns, row)}
             profile.deserialize(data)
 
-            c.execute("select * from property where profile_id = ?", profile.id)
+            c.execute("select * from property where profile_id = ?", (profile.id,))
             property_columns = [d[0] for d in c.description]
             property_rows = c.fetchall()
             for property_row in property_rows:
@@ -70,7 +71,8 @@ class PersistenceManager:
         new_envs = filter(lambda e: e.new, environments)
         for env in new_envs:
             data = env.serialize()
-            del data["id"]
+            if "id" in data:
+                del data["id"]
             PersistenceManager._execute_insert_query("environment", data)
             env.new = False
             env.dirty = False
@@ -79,15 +81,17 @@ class PersistenceManager:
         new_profiles = [p for p in all_profiles if p.new]
         for profile in new_profiles:
             data = profile.serialize()
-            del data["id"]
+            if "id" in data:
+                del data["id"]
             PersistenceManager._execute_insert_query("profile", data)
             profile.new = False
             profile.dirty = False
 
-        new_props = [prop for profile in all_profiles for prop in profile.properties]
+        new_props = [prop for profile in all_profiles for prop in profile.properties if prop.new]
         for prop in new_props:
             data = prop.serialize()
-            del data["id"]
+            if "id" in data:
+                del data["id"]
             PersistenceManager._execute_insert_query("property", data)
             prop.new = False
             prop.dirty = False
@@ -103,7 +107,7 @@ class PersistenceManager:
             PersistenceManager._execute_update_query("profile", profile.serialize())
             profile.dirty = False
 
-        for prop in [prop for profile in all_profiles for prop in profile.properties if prop.new]:
+        for prop in [prop for profile in all_profiles for prop in profile.properties if prop.dirty]:
             PersistenceManager._execute_update_query("property", prop.serialize())
             prop.dirty = False
 
@@ -150,10 +154,10 @@ class PersistenceManager:
             replacement_values.append(values[k])
 
         replacement_values.append(values["id"])
-        query = "update {} set {} where id = ?".format(table, ", ".join(placeholders), tuple(replacement_values))
+        query = "update {} set {} where id = ?".format(table, ", ".join(placeholders))
 
         c = DBManager.db().cursor()
-        c.execute(query)
+        c.execute(query, tuple(replacement_values))
         c.close()
 
     @staticmethod
