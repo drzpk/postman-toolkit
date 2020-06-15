@@ -4,9 +4,11 @@ import time
 import datetime
 import sqlite3
 import math
+import importlib.resources as pkg_resources
 
 from .db_manager import DBManager
 from ..log import Log
+from . import migrations
 
 
 class MigrationFile:
@@ -14,21 +16,23 @@ class MigrationFile:
     name: str
     content: str
 
-    def __init__(self, full_path):
-        filename = os.path.basename(full_path)
+    def __init__(self, migration_filename):
         pattern = re.compile("^(\\d+)\\.\\s?(.*)\\.sql$")
-        result = re.match(pattern, filename)
+        result = re.match(pattern, migration_filename)
         if result is None:
-            raise Exception("Migration file {} doesn't conform to the file name requirements".format(full_path))
+            raise Exception("Migration file {} doesn't conform to the file name requirements".format(migration_filename))
 
         self.number = int(result.group(1))
         self.name = result.group(2)
-        with open(full_path, "r") as f:
-            self.content = f.read()
+        self.content = pkg_resources.read_text(migrations, migration_filename)
 
 
 class MigrationManager:
     _migrations: [MigrationFile]
+    _migration_file_names = [  # todo need a better mechanism for that shit
+        "0. Versions.sql",
+        "1. Model.sql"
+    ]
 
     @staticmethod
     def migrate():
@@ -72,8 +76,7 @@ class MigrationManager:
 
     @staticmethod
     def _load_migration_files():
-        migration_dir = os.path.join(os.path.dirname(__file__), "migrations")
-        migrations = map(lambda x: MigrationFile(os.path.join(migration_dir, x)), os.listdir(migration_dir))
+        migrations = map(lambda x: MigrationFile(x), MigrationManager._migration_file_names)
         migrations = sorted(migrations, key=lambda x: x.number)
 
         numbers = []

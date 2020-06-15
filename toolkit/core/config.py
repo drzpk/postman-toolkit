@@ -7,32 +7,24 @@ from .log import Log
 config_instance = None
 
 
-class ConfigEntry:
-    default = None
-    comment = None
-
-    def __init__(self, default, comment):
-        self.default = default
-        self.comment = comment
-
-
-class ConfigProperty(Enum):
-    SERVER_HOST = ConfigEntry("localhost", "Hostname or IP address to listen on")
-    SERVER_PORT = ConfigEntry("8881", "Port to listen on")
-    DEBUG = ConfigEntry("", "Whether debug mode is active, non empty value means 'yes'")
+class ConfigProperty:
+    SERVER_HOST = os.environ["SERVER_HOST"] if "SERVER_HOST" in os.environ else "localhost"
+    SERVER_PORT = os.environ["SERVER_PORT"] if "SERVER_PORT" in os.environ else "8881"
+    DEBUG = True if "DEBUG" in os.environ else False
 
     def get_value(self) -> str:
         return config_instance[self.name] if self.name in config_instance else None
 
 
 class Configuration:
+    data_dir = None
     config_dir = None
     profiles_dir = None
 
     @staticmethod
     def initialize():
-        current_dir = os.path.dirname(os.path.realpath(__file__))
-        root_dir = os.path.normpath(current_dir + "/../../")
+        Configuration.data_dir = os.getcwd()
+        return
 
         Configuration.config_dir = os.path.normpath(root_dir + "/config")
         if not os.path.isdir(Configuration.config_dir):

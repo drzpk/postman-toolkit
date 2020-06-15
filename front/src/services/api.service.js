@@ -3,7 +3,7 @@ import notificationService from './notification.service';
 
 
 // todo: development
-const BASE_PATH = 'http://localhost:8881';
+const BASE_PATH = 'http://localhost:8881/api';
 
 function wrapResponse(promise) {
   return promise.then(function (response) {

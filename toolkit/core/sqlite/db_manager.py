@@ -8,6 +8,7 @@ class DBManager:
 
     @staticmethod
     def initialize(base_directory):
+        print(base_directory)
         DBManager._base_dir = base_directory
 
     @staticmethod

@@ -7,21 +7,15 @@ from ..core.service.persistence_manager import PersistenceManager
 
 VERSION = "1.0"
 
-debug = False
-
 
 class PostmanToolkit:
     context: Context = None
 
     def __init__(self):
-        global debug
-
         Configuration.initialize()
-        _d = ConfigProperty.DEBUG.get_value()
-        debug = _d is not None and len(_d) > 0
-        Log.debug = debug
+        Log.debug = ConfigProperty.DEBUG
 
-        DBManager.initialize(Configuration.config_dir)
+        DBManager.initialize(Configuration.data_dir)
         MigrationManager.migrate()
 
         self.context = Context()

@@ -17,6 +17,7 @@ Vue.use(AlertPlugin);
 Vue.use(PopoverPlugin);
 
 export default new Router({
+  base: '/app',
   routes: [
     {
       path: '/',
