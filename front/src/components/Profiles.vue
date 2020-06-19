@@ -12,13 +12,16 @@
 
             {{profile.name}}
             <span style="float: right">
-            <!--suppress JSUnresolvedVariable -->
-            <i class="fas fa-caret-square-up size-medium cursor-pointer"
-               @click="moveUp(profile, $event)" :class="{'disabled': index === 0}"></i>
+              <i class="fas fa-eye size-medium cursor-pointer" v-b-tooltip.hover title="Toggle active state"
+                 :class="{'fa-eye': profile.active, 'fa-eye-slash': !profile.active}" @click="toggleActiveState(profile, $event)"></i>
+              &nbsp;&nbsp;
               <!--suppress JSUnresolvedVariable -->
-            <i class="fas fa-caret-square-down size-medium cursor-pointer"
-               @click="moveDown(profile, $event)" :class="{'disabled': index + 1 === profiles.length}"></i>
-         </span>
+              <i class="fas fa-caret-square-up size-medium cursor-pointer"
+                 @click="moveUp(profile, $event)" :class="{'disabled': index === 0}"></i>
+              <!--suppress JSUnresolvedVariable -->
+              <i class="fas fa-caret-square-down size-medium cursor-pointer"
+                 @click="moveDown(profile, $event)" :class="{'disabled': index + 1 === profiles.length}"></i>
+           </span>
 
           </li>
         </transition-group>
@@ -26,14 +29,16 @@
       </div>
 
       <div class="col-7">
-        <ProfileConfig v-if="selectedProfile" :profile-id="selectedProfile.id" :profile-name="selectedProfile.name"></ProfileConfig>
+        <ProfileConfig v-if="selectedProfile" :profile-id="selectedProfile.id"
+                       :profile-name="selectedProfile.name"></ProfileConfig>
       </div>
     </div>
 
     <div class="row" style="margin-top: 2em">
       <div class="col-4">
         <div id="add-profile">
-          <b-button id="add-profile-button" variant="outline-primary" @click="showNewProfileDialog = !showNewProfileDialog">
+          <b-button id="add-profile-button" variant="outline-primary"
+                    @click="showNewProfileDialog = !showNewProfileDialog">
             <i class="fas fa-plus"></i> Add profile
           </b-button>
           <b-popover target="add-profile-button" triggers="manual" placement="bottom"
@@ -108,6 +113,15 @@
         }
       },
 
+      toggleActiveState(profile, event) {
+        event.stopPropagation();
+        const method = profile.active ? api.deactivateProfile : api.activateProfile;
+
+        method(profile.id).then(function () {
+          profile.active = !profile.active;
+        });
+      },
+
       addProfile() {
         if (!this.newProfileName.trim().length) {
           notificationService.emitError('Profile name cannot be empty');
@@ -115,7 +129,7 @@
         }
 
         const that = this;
-        api.addProfile(this.newProfileName, false).then(function (response) {
+        api.addProfile(this.newProfileName, false).then(function () {
           that.loadProfiles();
           notificationService.emitInfo(`Profile ${that.newProfileName} has been created`);
         }).catch(function () {

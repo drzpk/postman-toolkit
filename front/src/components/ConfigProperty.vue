@@ -25,8 +25,7 @@
             <template v-slot:button-content>
               <i class="fas fa-ellipsis-v"></i>
             </template>
-            <b-dropdown-item href="#">Rename</b-dropdown-item>
-            <b-dropdown-item href="#">Delete</b-dropdown-item>
+            <b-dropdown-item href="#" @click="deleteProperty()">Delete</b-dropdown-item>
           </b-dropdown>
         </div>
 
@@ -63,6 +62,13 @@
         }
       },
 
+      deleteProperty() {
+        const that = this;
+        api.deleteProfileProperty(this.property.profile, this.property.id).then(function () {
+          that.$emit('deleted');
+        });
+      },
+
       enableEditMode() {
         this.nameEditor.active = true;
         this.nameEditor.value = this.property.name;
@@ -71,7 +77,7 @@
       disableEditMode(saveChanges) {
         this.nameEditor.active = false;
         if (saveChanges) {
-          api.renameProfileProperty(this.property.profile, this.property.name, this.nameEditor.value);
+          api.renameProfileProperty(this.property.profile, this.property.id, this.nameEditor.value);
           this.property.name = this.nameEditor.value;
         }
       }

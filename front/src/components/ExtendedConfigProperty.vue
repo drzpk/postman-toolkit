@@ -15,7 +15,7 @@
     <div v-if="expanded">
       <div class="form-group row" v-for="(property, i) in expandedProperties" :key="i">
         <label :for="inputName" class="col-3 col-form-label">
-          {{property.profile}}
+          {{property.profileName}}
           <i v-show="!property.active" class="fas fa-eye-slash" v-b-tooltip.hover="" title="this profile is inactive"></i>
         </label>
         <div class="col-8">
@@ -55,7 +55,7 @@
           property.ancestors.splice(0, 0, {
             name: property.name,
             value: property.value,
-            profile: property.profile,
+            profileName: property.profileName,
             active: property.active
           });
           this.expandedProperties = property.ancestors;

@@ -45,7 +45,7 @@
     },
     methods: {
       loadProperties() {
-        api.getAllProperties().then((properties) => {
+        api.getAllProperties(true).then((properties) => {
           this.properties = properties;
         });
       }

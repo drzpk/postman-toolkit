@@ -34,7 +34,7 @@ class WebFacade:
             "id": first[1].id,
             "name": first[1].name,
             "value": first[1].value,
-            "profile": first[0].id,
+            "profileName": first[0].name,
             "active": first[0].enabled and first[1].enabled
         }
 
@@ -45,7 +45,7 @@ class WebFacade:
                 "id": ancestor[1].id,
                 "name": ancestor[1].name,
                 "value": ancestor[1].value,
-                "profile": ancestor[0].id,
+                "profileName": ancestor[0].name,
                 "active": ancestor[0].enabled and ancestor[1].enabled
             })
 
@@ -84,18 +84,18 @@ class WebFacade:
         if profile is None:
             raise Exception("Profile {} wasn't found".format(profile_id))
 
-        profile.delete_property(property_id)
+        profile.delete_property(int(property_id))
 
     @interceptor
-    def rename_property(self, profile_name, old_property_name, new_property_name):
+    def rename_property(self, profile_id, property_id, new_property_name):
         env = self._find_env(ENVIRONMENT_NAME)
-        profile = env.find_profile(profile_name)
+        profile = env.get_profile(profile_id)
         if profile is None:
-            raise Exception("Profile {} wasn't found".format(profile_name))
+            raise Exception("Profile {} wasn't found".format(profile_id))
 
-        prop = profile.find_property(old_property_name)
+        prop = profile.get_property(int(property_id))
         if prop is None:
-            raise Exception("Property {} wasn't found in profile {}".format(old_property_name, profile_name))
+            raise Exception("Property {} wasn't found in profile {}".format(property_id, profile.name))
 
         prop.name = new_property_name
 
@@ -109,9 +109,14 @@ class WebFacade:
         _list = []
         for name in names:
             if profile is None:
-                (p, prop) = env.get_first_property(name, active_only)
+                result = env.get_first_property(name, active_only)
             else:
-                (p, prop) = profile, profile.find_property(name)
+                result = profile, profile.find_property(name)
+
+            if result is None:
+                continue
+            (p, prop) = result
+
             _list.append({
                 "id": prop.id,
                 "name": prop.name,

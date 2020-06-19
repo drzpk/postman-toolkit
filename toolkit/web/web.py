@@ -111,17 +111,15 @@ def list_profiles():
 @exception_handler
 @app.route("/api/profiles/<id>/activate", methods=["POST"])
 def activate_profile(id):
-    if facade.set_profile_enabled_state(id, True):
-        return make_response("", 200)
-    return make_response("", 404)
+    facade.set_profile_enabled_state(id, True)
+    return make_response("", 200)
 
 
 @exception_handler
 @app.route("/api/profiles/<id>/deactivate", methods=["POST"])
 def deactivate_profile(id):
-    if facade.set_profile_enabled_state(id, False):
-        return make_response("", 200)
-    return make_response("", 404)
+    facade.set_profile_enabled_state(id, False)
+    return make_response("", 200)
 
 
 @exception_handler
@@ -186,6 +184,7 @@ def update_profile_config(profile_id, property_id):
 @app.route("/api/profiles/<profile_id>/config/<property_id>", methods=["DELETE"])
 def delete_profile_config(profile_id, property_id):
     facade.delete_property(profile_id, property_id)
+    return make_response("")
 
 
 @exception_handler
@@ -195,9 +194,8 @@ def rename_profile_config(profile_name, old_name):
     if body is None or "new_name" not in body or body["new_name"] is None:
         return make_response("New name not specified", 422)
 
-    if facade.rename_property(profile_name, old_name, body["new_name"]):
-        return make_response("", 204)
-    return make_response("", 404)
+    facade.rename_property(profile_name, old_name, body["new_name"])
+    return make_response("", 200)
 
 
 @app.after_request

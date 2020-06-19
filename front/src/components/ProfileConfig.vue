@@ -2,7 +2,7 @@
   <div>
     <p>Properties of profile {{profileName}}</p>
     <div v-if="properties">
-      <ConfigProperty v-for="property in properties" :key="property.name" :property="property"/>
+      <ConfigProperty v-for="property in properties" :key="property.name" :property="property" @deleted="refreshProfile()"/>
     </div>
     <div class="add-property">
       <b-button id="popover-target" variant="outline-primary" @click="showNewPropertyDialog = !showNewPropertyDialog">

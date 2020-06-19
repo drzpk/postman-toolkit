@@ -2,7 +2,6 @@ import axios from 'axios';
 import notificationService from './notification.service';
 
 
-// todo: development
 const BASE_PATH = 'http://localhost:8881/api';
 
 function wrapResponse(promise) {
@@ -49,12 +48,24 @@ function addProfileProperty(profileId, propertyName, value) {
   return wrapResponse(axios.put(BASE_PATH + '/profiles/' + profileId + '/config', payload));
 }
 
+function deleteProfileProperty(profileId, propertyId) {
+  return wrapResponse(axios.delete(BASE_PATH + '/profiles/' + profileId + '/config/' + propertyId));
+}
+
 function moveProfileUp(id) {
   return wrapResponse(axios.post(BASE_PATH + '/profiles/' + id + '/up'));
 }
 
 function moveProfileDown(id) {
   return wrapResponse(axios.post(BASE_PATH + '/profiles/' + id + '/down'));
+}
+
+function activateProfile(id) {
+  return wrapResponse(axios.post(BASE_PATH + '/profiles/' + id + '/activate'));
+}
+
+function deactivateProfile(id) {
+  return wrapResponse(axios.post(BASE_PATH + '/profiles/' + id + '/deactivate'));
 }
 
 function addProfile(profileName, active) {
@@ -65,8 +76,8 @@ function addProfile(profileName, active) {
   return wrapResponse(axios.post(BASE_PATH + '/profiles', payload));
 }
 
-function getAllProperties() {
-  return wrapResponse(axios.get(BASE_PATH + '/config'));
+function getAllProperties(activeOnly) {
+  return wrapResponse(axios.get(BASE_PATH + '/config' + (activeOnly ? "?active_only" : "")));
 }
 
 function getPropertyDetails(name, includeInactive = false) {
@@ -79,8 +90,11 @@ export default {
   setProfileProperty,
   renameProfileProperty,
   addProfileProperty,
+  deleteProfileProperty,
   moveProfileUp,
   moveProfileDown,
+  activateProfile,
+  deactivateProfile,
   addProfile,
   getAllProperties,
   getPropertyDetails,
