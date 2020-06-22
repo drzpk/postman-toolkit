@@ -97,5 +97,5 @@ export default {
   deactivateProfile,
   addProfile,
   getAllProperties,
-  getPropertyDetails,
+  getPropertyDetails
 }

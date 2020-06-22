@@ -1,8 +1,10 @@
 <template>
   <div>
     <h4>List of all available properties</h4>
-    <div class="row">
+
+    <div class="row" style="display: none"> <!-- not displayed, don't have time to actually implement this -->
       <div class="col-4">
+        <!--suppress HtmlFormInputWithoutLabel -->
         <input type="text" class="form-control" :value="propertyFilter" placeholder="filter properties"/>
       </div>
       <div class="col-2">
