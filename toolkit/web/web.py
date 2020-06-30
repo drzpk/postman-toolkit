@@ -210,6 +210,6 @@ def after_request(response):
 
 def run_web():
     app.run(
-        ConfigProperty.SERVER_HOST,
+        ConfigProperty. SERVER_HOST,
         ConfigProperty.SERVER_PORT,
         ConfigProperty.DEBUG)
