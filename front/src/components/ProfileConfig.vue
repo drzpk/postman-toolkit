@@ -62,10 +62,13 @@
       }
     },
     watch: {
-      profileId: function () {
-        this.refreshProfile();
-        this.showNewPropertyDialog = false;
-        this.newPropertyName = '';
+      profileId: {
+        immediate: true,
+        handler: function () {
+          this.refreshProfile();
+          this.showNewPropertyDialog = false;
+          this.newPropertyName = '';
+        }
       }
     }
   }

@@ -113,9 +113,9 @@ class PersistenceManager:
 
     @staticmethod
     def _delete_entities():
-        props = list(filter(lambda e: e is Property, PendingEntityBuffer.deleted_entities))
-        profiles = list(filter(lambda e: e is Profile, PendingEntityBuffer.deleted_entities))
-        environments = list(filter(lambda e: e is Environment, PendingEntityBuffer.deleted_entities))
+        props = list(filter(lambda e: isinstance(e, Property), PendingEntityBuffer.deleted_entities))
+        profiles = list(filter(lambda e: isinstance(e, Profile), PendingEntityBuffer.deleted_entities))
+        environments = list(filter(lambda e: isinstance(e, Environment), PendingEntityBuffer.deleted_entities))
         PendingEntityBuffer.deleted_entities.clear()
 
         profiles += [p for env in environments for p in env.profiles]
@@ -162,9 +162,12 @@ class PersistenceManager:
 
     @staticmethod
     def _execute_delete_query(table, values: List):
+        if len(values) == 0:
+            return
+
         Log.d("Executing delete query for table {} with values: {}".format(table, values))
 
-        ids = ", ".join(values)
+        ids = ", ".join(map(str, values))
         query = "delete from {} where id in ({})".format(table, ids)
 
         c = DBManager.db().cursor()

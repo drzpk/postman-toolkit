@@ -79,7 +79,7 @@ class Profile(Entity):
     def create_property(self, name, value) -> Property:
         existing = self.find_property(name)
         if existing is not None:
-            raise Exception("Cannot create property {}: another property with the same naem already exists".format(name))
+            raise Exception("Cannot create property {}: another property with the same name already exists".format(name))
 
         prop = Property.create(name, self.id)
         prop.value = value
